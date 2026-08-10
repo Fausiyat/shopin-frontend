@@ -19,19 +19,30 @@ const StashWallet = ({ walletBalance, setWalletBalance, escrowBalance, activeTar
     setShowTransferModal(true);
   };
 
-  const handleConfirmSent = () => {
-    // 1. Add to pending list (In a real app, this saves to your Neon Database via Render)
-    const newPending = {
-      id: Date.now(),
-      amount: Number(depositAmount),
-      date: new Date().toLocaleTimeString(),
-      status: 'Pending Verification'
-    };
-    setPendingDeposits([newPending, ...pendingDeposits]);
+  const handleConfirmSent = async () => {
+    // 1. Get the current user's ID
+    const currentShopinId = localStorage.getItem('SHOPIN_USER_ID') || 'SHP-ILR-1001';
     
-    // 2. Close modal and reset
-    setShowTransferModal(false);
-    setDepositAmount('');
+    try {
+      // 2. Send the claim to your Render backend
+      const API_URL = import.meta.env.VITE_API_URL || 'https://shopin-kwara-backend.onrender.com';
+      await fetch(`${API_URL}/api/wallet/request-deposit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          shopin_id: currentShopinId,
+          amount_ngn: Number(depositAmount)
+        })
+      });
+
+      alert("Transfer claim submitted! Waiting for Admin verification.");
+      setShowTransferModal(false);
+      setDepositAmount('');
+      
+    } catch (err) {
+      alert("Error submitting claim. Please check your connection.");
+      console.error(err);
+    }
   };
 
   return (

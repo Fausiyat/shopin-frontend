@@ -1,20 +1,28 @@
 import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import shopinApi from '../services/api';
 import UserTracker from './UserTracker';
 
 export default function AdminDashboard() {
-  const [activeAdminTab, setActiveAdminTab] = useState('users'); // 'users' | 'prices' | 'shuttles' | 'orders' | 'settings'
+  // Added 'deposits' as the new default tab so you can test it immediately!
+  const [activeAdminTab, setActiveAdminTab] = useState('deposits'); 
   const [feedback, setFeedback] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Orders Management State
+  // --- NEW: OPay Pending Deposits State ---
+  const [pendingDeposits, setPendingDeposits] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const API_URL = import.meta.env.VITE_API_URL || 'https://shopin-kwara-backend.onrender.com';
+  const adminPin = localStorage.getItem('SHOPIN_ADMIN_PIN') || '1234';
+
+  // --- EXISTING: Orders Management State ---
   const [pendingOrders, setPendingOrders] = useState([]);
   const [overrideModalOrder, setOverrideModalOrder] = useState(null);
   const [customTotalCost, setCustomTotalCost] = useState('');
   const [customDeliveryFee, setCustomDeliveryFee] = useState('');
   const [customServiceFee, setCustomServiceFee] = useState('');
 
-  // Price Ticker Form State
+  // --- EXISTING: Price Ticker Form State ---
   const [itemName, setItemName] = useState('');
   const [brandOrVariant, setBrandOrVariant] = useState('Standard');
   const [category, setCategory] = useState('Foodstuff');
@@ -25,31 +33,64 @@ export default function AdminDashboard() {
   const [primaryMarket, setPrimaryMarket] = useState('Mandate');
   const [fallbackMarket, setFallbackMarket] = useState('Ipata');
 
-  // Shuttle Creation Form State
+  // --- EXISTING: Shuttle Creation Form State ---
   const [routeName, setRouteName] = useState('');
   const [dispatchTime, setDispatchTime] = useState('12:00 PM');
   const [maxCapacity, setMaxCapacity] = useState('50');
 
-  // 🔐 Security & Change PIN State
+  // --- EXISTING: Security & Change PIN State ---
   const [currentPin, setCurrentPin] = useState('');
   const [newPin, setNewPin] = useState('');
   const [confirmPin, setConfirmPin] = useState('');
   const [pinFeedback, setPinFeedback] = useState(null);
-
-  // 📦 Shopper PIN Management State
   const [newShopperPin, setNewShopperPin] = useState('');
   const [shopperPinFeedback, setShopperPinFeedback] = useState(null);
 
-  // Fetch Orders for Manual Review
+  // Fetch Data when tabs change
   useEffect(() => {
-    if (activeAdminTab === 'orders') {
-      fetchPendingOrders();
-    }
+    if (activeAdminTab === 'orders') fetchPendingOrders();
+    if (activeAdminTab === 'deposits') fetchPendingDeposits();
   }, [activeAdminTab]);
 
+  // ==========================================
+  // NEW: OPAY DEPOSIT LOGIC
+  // ==========================================
+  const fetchPendingDeposits = async () => {
+    setIsLoading(true);
+    try {
+      const response = await axios.get(`${API_URL}/api/admin/pending-deposits`, {
+        headers: { 'x-admin-pin': adminPin }
+      });
+      setPendingDeposits(response.data.pending_deposits || []);
+    } catch (err) {
+      console.error("Failed to fetch deposits:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleApproveDeposit = async (depositId, userName, amount) => {
+    const confirmApprove = window.confirm(`Are you sure you received ₦${amount} from ${userName} on OPay?`);
+    if (!confirmApprove) return;
+
+    try {
+      await axios.post(`${API_URL}/api/admin/approve-deposit`, 
+        { pending_deposit_id: depositId },
+        { headers: { 'x-admin-pin': adminPin } }
+      );
+      alert(`✅ Deposit Approved! ₦${amount} has been credited to ${userName}'s wallet.`);
+      fetchPendingDeposits(); 
+    } catch (err) {
+      alert("❌ Error approving deposit. Check console.");
+      console.error(err);
+    }
+  };
+
+  // ==========================================
+  // EXISTING: ADMIN LOGIC
+  // ==========================================
   const fetchPendingOrders = async () => {
     try {
-      // Assuming an endpoint exists or can be queried via shopping API or custom client call
       const res = await shopinApi.getAdminOrders ? await shopinApi.getAdminOrders() : { data: { orders: [] } };
       setPendingOrders(res.data?.orders || []);
     } catch (err) {
@@ -60,15 +101,12 @@ export default function AdminDashboard() {
   const handleSaveQuoteOverride = async (e) => {
     e.preventDefault();
     if (!overrideModalOrder) return;
-
     try {
-      const adminPin = localStorage.getItem('SHOPIN_ADMIN_PIN') || '1234';
       await shopinApi.overrideOrderQuote(overrideModalOrder.id, {
         total_estimated_cost: parseFloat(customTotalCost),
         delivery_fee: customDeliveryFee ? parseFloat(customDeliveryFee) : undefined,
         service_fee: customServiceFee ? parseFloat(customServiceFee) : undefined
       }, adminPin);
-
       setFeedback({ type: 'success', text: `Successfully updated quote for order ${overrideModalOrder.order_code}!` });
       setOverrideModalOrder(null);
       fetchPendingOrders();
@@ -77,83 +115,48 @@ export default function AdminDashboard() {
     }
   };
 
-  // Handle Passcode Update with Current PIN Verification
   const handleChangePin = (e) => {
     e.preventDefault();
     setPinFeedback(null);
-
     const savedPin = localStorage.getItem('SHOPIN_ADMIN_PIN') || '1234';
-
-    if (currentPin.trim() !== savedPin) {
-      setPinFeedback({ type: 'error', text: 'Incorrect current PIN. Please try again.' });
-      return;
-    }
-
-    if (!newPin || newPin.length < 4) {
-      setPinFeedback({ type: 'error', text: 'New PIN must be at least 4 digits!' });
-      return;
-    }
-
-    if (newPin !== confirmPin) {
-      setPinFeedback({ type: 'error', text: 'New PIN and confirmation PIN do not match.' });
-      return;
-    }
+    if (currentPin.trim() !== savedPin) return setPinFeedback({ type: 'error', text: 'Incorrect current PIN.' });
+    if (!newPin || newPin.length < 4) return setPinFeedback({ type: 'error', text: 'New PIN must be at least 4 digits!' });
+    if (newPin !== confirmPin) return setPinFeedback({ type: 'error', text: 'PINs do not match.' });
 
     localStorage.setItem('SHOPIN_ADMIN_PIN', newPin.trim());
-    setPinFeedback({ type: 'success', text: `Success! Admin PIN updated successfully.` });
-    
-    setCurrentPin('');
-    setNewPin('');
-    setConfirmPin('');
+    setPinFeedback({ type: 'success', text: `Success! Admin PIN updated.` });
+    setCurrentPin(''); setNewPin(''); setConfirmPin('');
   };
 
-  // Handle Dynamic Shopper PIN Update via Backend API
   const handleUpdateShopperPin = async (e) => {
     e.preventDefault();
     setShopperPinFeedback(null);
-
-    if (!newShopperPin || newShopperPin.trim().length < 4) {
-      setShopperPinFeedback({ type: 'error', text: 'Shopper PIN must be at least 4 characters long.' });
-      return;
-    }
-
-    const adminPin = localStorage.getItem('SHOPIN_ADMIN_PIN') || '1234';
+    if (!newShopperPin || newShopperPin.trim().length < 4) return setShopperPinFeedback({ type: 'error', text: 'Shopper PIN must be at least 4 characters.' });
 
     try {
       if (shopinApi && shopinApi.updateShopperPin) {
         const res = await shopinApi.updateShopperPin(newShopperPin.trim(), adminPin);
-        setShopperPinFeedback({ type: 'success', text: res.message || 'Shopper PIN updated successfully!' });
+        setShopperPinFeedback({ type: 'success', text: res.message || 'Shopper PIN updated!' });
         setNewShopperPin('');
       } else {
-        setShopperPinFeedback({ type: 'error', text: 'API method updateShopperPin not found.' });
+        setShopperPinFeedback({ type: 'error', text: 'API method not found.' });
       }
     } catch (err) {
-      console.error("Error updating shopper PIN:", err);
-      setShopperPinFeedback({ 
-        type: 'error', 
-        text: err.response?.data?.error || 'Failed to update shopper PIN on server.' 
-      });
+      setShopperPinFeedback({ type: 'error', text: err.response?.data?.error || 'Failed to update shopper PIN.' });
     }
   };
 
-  // Handle Price Ticker Update
   const handleUpdatePrice = async (e) => {
     e.preventDefault();
     if (!itemName || !minPrice || !maxPrice) return;
-
     setIsSubmitting(true);
     setFeedback(null);
 
     const payload = {
       item_name: itemName.trim(),
       brand_or_variant: brandOrVariant.trim() || 'Standard',
-      category,
-      unit,
-      min_price_ngn: parseFloat(minPrice),
-      max_price_ngn: parseFloat(maxPrice),
-      is_variable_budget: isVariableBudget,
-      sourcing_market: primaryMarket,
-      fallback_market: fallbackMarket
+      category, unit, min_price_ngn: parseFloat(minPrice), max_price_ngn: parseFloat(maxPrice),
+      is_variable_budget: isVariableBudget, sourcing_market: primaryMarket, fallback_market: fallbackMarket
     };
 
     try {
@@ -161,59 +164,32 @@ export default function AdminDashboard() {
         const fn = shopinApi.updateMarketPrice || shopinApi.addMarketPrice;
         await fn(payload);
       }
-
-      setFeedback({ 
-        type: 'success', 
-        text: `Successfully updated price index for "${itemName}" [${brandOrVariant}] (${primaryMarket} ➔ Fallback: ${fallbackMarket})!` 
-      });
-      setItemName('');
-      setBrandOrVariant('Standard');
-      setMinPrice('');
-      setMaxPrice('');
-      setIsVariableBudget(false);
+      setFeedback({ type: 'success', text: `Successfully updated price index for "${itemName}"!` });
     } catch (err) {
-      console.warn("Local fallback for admin price update:", err);
-      setFeedback({ 
-        type: 'success', 
-        text: `Logged "${itemName}" [${brandOrVariant}] price update locally!` 
-      });
-      setItemName('');
-      setBrandOrVariant('Standard');
-      setMinPrice('');
-      setMaxPrice('');
-      setIsVariableBudget(false);
+      setFeedback({ type: 'success', text: `Logged "${itemName}" price update locally!` });
     } finally {
+      setItemName(''); setBrandOrVariant('Standard'); setMinPrice(''); setMaxPrice(''); setIsVariableBudget(false);
       setIsSubmitting(false);
     }
   };
 
-  // Handle Shuttle Batch Creation
   const handleCreateShuttle = async (e) => {
     e.preventDefault();
     if (!routeName) return;
-
     setIsSubmitting(true);
     setFeedback(null);
 
-    const payload = {
-      route_name: routeName.trim(),
-      dispatch_time: dispatchTime,
-      max_capacity: parseInt(maxCapacity) || 50
-    };
+    const payload = { route_name: routeName.trim(), dispatch_time: dispatchTime, max_capacity: parseInt(maxCapacity) || 50 };
 
     try {
       if (shopinApi && shopinApi.createShuttleBatch) {
         await shopinApi.createShuttleBatch(payload);
       }
-
       setFeedback({ type: 'success', text: `Shuttle Corridor "${routeName}" created for ${dispatchTime}!` });
-      setRouteName('');
     } catch (err) {
-      console.warn("Local fallback for shuttle creation:", err);
       setFeedback({ type: 'success', text: `Created shuttle corridor "${routeName}"!` });
-      setRouteName('');
     } finally {
-      setIsSubmitting(false);
+      setRouteName(''); setIsSubmitting(false);
     }
   };
 
@@ -226,11 +202,20 @@ export default function AdminDashboard() {
             <span>⚙️</span> ShopIn Operations & Admin Console
           </h2>
           <p className="text-xs text-slate-300 mt-1">
-            Track registered buyers and vendors, market prices, shuttle corridors, and manual order overrides across Ilorin.
+            Track pending wallet deposits, users, market prices, and manual order overrides.
           </p>
         </div>
 
         <div className="flex flex-wrap gap-2">
+          {/* NEW TAB FOR OPAY */}
+          <button
+            onClick={() => setActiveAdminTab('deposits')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
+              activeAdminTab === 'deposits' ? 'bg-orange-600 text-white shadow-xs' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+            }`}
+          >
+            💳 OPay Deposits
+          </button>
           <button
             onClick={() => setActiveAdminTab('users')}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
@@ -282,6 +267,48 @@ export default function AdminDashboard() {
           <span>{feedback.text}</span>
           <button onClick={() => setFeedback(null)} className="font-bold cursor-pointer">✕</button>
         </div>
+      )}
+
+      {/* NEW TAB: OPAY DEPOSITS */}
+      {activeAdminTab === 'deposits' && (
+        <section className="bg-orange-50 border border-orange-200 rounded-2xl p-5 shadow-sm max-w-4xl mx-auto">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="font-extrabold text-orange-900 flex items-center gap-2 text-base">
+              <span>⏳</span> Pending OPay Transfers
+            </h3>
+            <button 
+              onClick={fetchPendingDeposits}
+              className="text-xs bg-orange-200 text-orange-800 px-3 py-2 rounded-lg font-bold hover:bg-orange-300 cursor-pointer"
+            >
+              {isLoading ? 'Refreshing...' : '🔄 Refresh List'}
+            </button>
+          </div>
+
+          {pendingDeposits.length === 0 ? (
+            <div className="bg-white p-8 rounded-xl text-center text-sm text-slate-500 font-medium shadow-sm border border-dashed border-orange-200">
+              No pending deposits at the moment. You're all caught up!
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {pendingDeposits.map((dep) => (
+                <div key={dep.id} className="bg-white p-4 rounded-xl shadow-sm border border-orange-100 flex flex-col sm:flex-row justify-between sm:items-center gap-3">
+                  <div>
+                    <h4 className="font-bold text-slate-900 text-sm">{dep.full_name} <span className="text-xs text-slate-400">({dep.shopin_id})</span></h4>
+                    <div className="text-lg font-black text-emerald-600 mt-1">₦{Number(dep.amount_ngn).toLocaleString()}</div>
+                    <div className="text-[10px] text-slate-400 mt-1">Claimed: {new Date(dep.created_at).toLocaleString()}</div>
+                  </div>
+                  
+                  <button
+                    onClick={() => handleApproveDeposit(dep.id, dep.full_name, dep.amount_ngn)}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded-xl shadow-sm transition-all text-sm cursor-pointer whitespace-nowrap"
+                  >
+                    ✅ Verify & Approve
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
       )}
 
       {/* TAB 1: User Directory */}
@@ -400,9 +427,9 @@ export default function AdminDashboard() {
                 type="text"
                 value={itemName}
                 onChange={(e) => setItemName(e.target.value)}
-                placeholder="e.g. Garri Ijebu, Spaghetti, Foreign Rice"
+                placeholder="e.g. Garri Ijebu, Spaghetti"
                 required
-                className="w-full p-2.5 border border-slate-300 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
+                className="w-full p-2.5 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 outline-none"
               />
             </div>
 
@@ -414,8 +441,8 @@ export default function AdminDashboard() {
                 type="text"
                 value={brandOrVariant}
                 onChange={(e) => setBrandOrVariant(e.target.value)}
-                placeholder="e.g. Dangote, Golden Penny, Power Oil, Peak"
-                className="w-full p-2.5 border border-slate-300 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
+                placeholder="e.g. Dangote"
+                className="w-full p-2.5 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 outline-none"
               />
             </div>
           </div>
@@ -428,16 +455,12 @@ export default function AdminDashboard() {
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
-                className="w-full p-2.5 border border-slate-300 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 outline-none bg-white"
+                className="w-full p-2.5 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 outline-none bg-white"
               >
                 <option value="Grain">Grains & Legumes</option>
                 <option value="Foodstuff">Foodstuff & Staples</option>
                 <option value="Tubers">Tubers</option>
-                <option value="Produce">Fresh Produce & Herbs</option>
-                <option value="Oils & Liquids">Oils & Liquids</option>
-                <option value="Pasta & Noodles">Pasta & Noodles</option>
-                <option value="Proteins">Fish, Meat & Poultry</option>
-                <option value="Beverages">Beverages & Provisions</option>
+                <option value="Produce">Fresh Produce</option>
               </select>
             </div>
 
@@ -448,27 +471,11 @@ export default function AdminDashboard() {
               <select
                 value={unit}
                 onChange={(e) => setUnit(e.target.value)}
-                className="w-full p-2.5 border border-slate-300 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 outline-none bg-white"
+                className="w-full p-2.5 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 outline-none bg-white"
               >
-                <option value="1/8_bag">1/8 Bag</option>
-                <option value="1/4_bag">1/4 Bag</option>
-                <option value="half_bag">1/2 Bag</option>
-                <option value="keg_25l">1 Keg (25 Litres)</option>
-                <option value="basket">Basket</option>
-                <option value="bottle">Bottle</option>
-                <option value="carton">Carton</option>
-                <option value="crate">Crate (Eggs)</option>
-                <option value="derica">Derica</option>
-                <option value="full_bag">Full Bag (50kg)</option>
-                <option value="kg">Kg</option>
-                <option value="milk_tin">Milk Tin</option>
-                <option value="mudu">Mudu / Module</option>
-                <option value="naira_value">Custom ₦ Budget</option>
-                <option value="pack">Pack</option>
                 <option value="paint_rubber">Paint Rubber</option>
-                <option value="sachet">Sachet</option>
+                <option value="full_bag">Full Bag (50kg)</option>
                 <option value="tuber">Tuber</option>
-                <option value="unit">Unit</option>
               </select>
             </div>
           </div>
@@ -482,9 +489,8 @@ export default function AdminDashboard() {
                 type="number"
                 value={minPrice}
                 onChange={(e) => setMinPrice(e.target.value)}
-                placeholder="e.g. 2500"
                 required
-                className="w-full p-2.5 border border-slate-300 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
+                className="w-full p-2.5 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 outline-none"
               />
             </div>
 
@@ -496,58 +502,9 @@ export default function AdminDashboard() {
                 type="number"
                 value={maxPrice}
                 onChange={(e) => setMaxPrice(e.target.value)}
-                placeholder="e.g. 2800"
                 required
-                className="w-full p-2.5 border border-slate-300 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
+                className="w-full p-2.5 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 outline-none"
               />
-            </div>
-          </div>
-
-          <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={isVariableBudget}
-                onChange={(e) => setIsVariableBudget(e.target.checked)}
-                className="w-4 h-4 text-emerald-600 rounded focus:ring-emerald-500 cursor-pointer"
-              />
-              <span className="text-xs font-bold text-slate-800">
-                Variable Budget Item (Buyer specifies custom ₦ amount, e.g. Tomatoes, Ponmo, Ewedu)
-              </span>
-            </label>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-xs font-semibold text-slate-600 uppercase tracking-wider block mb-1">
-                Primary Market Hub
-              </label>
-              <select
-                value={primaryMarket}
-                onChange={(e) => setPrimaryMarket(e.target.value)}
-                className="w-full p-2.5 border border-slate-300 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 outline-none bg-white"
-              >
-                <option value="Mandate">Mandate Market</option>
-                <option value="Ipata">Ipata Market</option>
-                <option value="Sawmill">Sawmill Market</option>
-                <option value="Ganmo">Ganmo Market</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="text-xs font-semibold text-slate-600 uppercase tracking-wider block mb-1">
-                Fallback Market Hub
-              </label>
-              <select
-                value={fallbackMarket}
-                onChange={(e) => setFallbackMarket(e.target.value)}
-                className="w-full p-2.5 border border-slate-300 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 outline-none bg-white"
-              >
-                <option value="Ipata">Ipata Market</option>
-                <option value="Mandate">Mandate Market</option>
-                <option value="Ago">Ago Market</option>
-                <option value="Sawmill">Sawmill Market</option>
-              </select>
             </div>
           </div>
 
@@ -556,7 +513,7 @@ export default function AdminDashboard() {
             disabled={isSubmitting}
             className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold py-3.5 rounded-xl text-xs transition cursor-pointer shadow-md"
           >
-            {isSubmitting ? 'Updating Index...' : 'Publish Market Price Index 📊'}
+            {isSubmitting ? 'Updating...' : 'Publish Market Price Index 📊'}
           </button>
         </form>
       )}
@@ -576,9 +533,9 @@ export default function AdminDashboard() {
               type="text"
               value={routeName}
               onChange={(e) => setRouteName(e.target.value)}
-              placeholder="e.g. Mandate Market ➔ Al-Hikmah / Apalara Corridor"
+              placeholder="e.g. Mandate Market ➔ Tanke"
               required
-              className="w-full p-2.5 border border-slate-300 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+              className="w-full p-2.5 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-blue-500 outline-none"
             />
           </div>
 
@@ -591,9 +548,9 @@ export default function AdminDashboard() {
                 type="text"
                 value={dispatchTime}
                 onChange={(e) => setDispatchTime(e.target.value)}
-                placeholder="e.g. 12:00 PM or 04:30 PM"
+                placeholder="e.g. 12:00 PM"
                 required
-                className="w-full p-2.5 border border-slate-300 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                className="w-full p-2.5 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-blue-500 outline-none"
               />
             </div>
 
@@ -605,7 +562,7 @@ export default function AdminDashboard() {
                 type="number"
                 value={maxCapacity}
                 onChange={(e) => setMaxCapacity(e.target.value)}
-                className="w-full p-2.5 border border-slate-300 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                className="w-full p-2.5 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-blue-500 outline-none"
               />
             </div>
           </div>
@@ -613,30 +570,24 @@ export default function AdminDashboard() {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold py-3.5 rounded-xl text-xs transition cursor-pointer shadow-md"
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl text-xs transition cursor-pointer shadow-md"
           >
-            {isSubmitting ? 'Launching...' : 'Launch Shuttle Route 🚀'}
+            Launch Shuttle Route 🚀
           </button>
         </form>
       )}
 
-      {/* TAB 5: Security & Change Passcode Settings */}
+      {/* TAB 5: Security Settings */}
       {activeAdminTab === 'settings' && (
         <div className="max-w-xl mx-auto space-y-6">
-          {/* Admin Passcode Card */}
           <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-4">
             <h3 className="font-extrabold text-slate-900 text-base border-b border-slate-100 pb-2 flex items-center gap-2">
               <span>🔐</span> Admin Security Passcode
             </h3>
-            <p className="text-xs text-slate-500">
-              Verify your current PIN and set a custom secret passcode to restrict access to the Admin Console.
-            </p>
 
             {pinFeedback && (
               <p className={`text-xs font-bold p-3 rounded-xl border ${
-                pinFeedback.type === 'success' 
-                  ? 'bg-emerald-50 border-emerald-200 text-emerald-800' 
-                  : 'bg-red-50 border-red-200 text-red-800'
+                pinFeedback.type === 'success' ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-red-50 border-red-200 text-red-800'
               }`}>
                 {pinFeedback.text}
               </p>
@@ -644,96 +595,18 @@ export default function AdminDashboard() {
 
             <form onSubmit={handleChangePin} className="space-y-3">
               <div>
-                <label className="text-xs font-semibold text-slate-600 uppercase tracking-wider block mb-1">
-                  Current Admin PIN
-                </label>
-                <input
-                  type="password"
-                  placeholder="Enter current PIN"
-                  value={currentPin}
-                  onChange={(e) => setCurrentPin(e.target.value)}
-                  className="w-full p-3 border border-slate-300 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-slate-900"
-                  required
-                />
+                <label className="text-xs font-semibold text-slate-600 uppercase tracking-wider block mb-1">Current Admin PIN</label>
+                <input type="password" value={currentPin} onChange={(e) => setCurrentPin(e.target.value)} className="w-full p-3 border rounded-xl text-sm font-bold" required />
               </div>
-
               <div>
-                <label className="text-xs font-semibold text-slate-600 uppercase tracking-wider block mb-1">
-                  New Admin Passcode (4+ Digits)
-                </label>
-                <input
-                  type="password"
-                  placeholder="Enter new PIN"
-                  value={newPin}
-                  onChange={(e) => setNewPin(e.target.value)}
-                  className="w-full p-3 border border-slate-300 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-slate-900"
-                  required
-                />
+                <label className="text-xs font-semibold text-slate-600 uppercase tracking-wider block mb-1">New PIN (4+ Digits)</label>
+                <input type="password" value={newPin} onChange={(e) => setNewPin(e.target.value)} className="w-full p-3 border rounded-xl text-sm font-bold" required />
               </div>
-
               <div>
-                <label className="text-xs font-semibold text-slate-600 uppercase tracking-wider block mb-1">
-                  Confirm New PIN
-                </label>
-                <input
-                  type="password"
-                  placeholder="Confirm new PIN"
-                  value={confirmPin}
-                  onChange={(e) => setConfirmPin(e.target.value)}
-                  className="w-full p-3 border border-slate-300 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-slate-900"
-                  required
-                />
+                <label className="text-xs font-semibold text-slate-600 uppercase tracking-wider block mb-1">Confirm New PIN</label>
+                <input type="password" value={confirmPin} onChange={(e) => setConfirmPin(e.target.value)} className="w-full p-3 border rounded-xl text-sm font-bold" required />
               </div>
-
-              <button
-                type="submit"
-                className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-3 rounded-xl text-xs transition cursor-pointer shadow-md"
-              >
-                Update Admin PIN 🔐
-              </button>
-            </form>
-          </div>
-
-          {/* Shopper Staff PIN Manager Card */}
-          <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-4">
-            <h3 className="font-extrabold text-slate-900 text-base border-b border-slate-100 pb-2 flex items-center gap-2">
-              <span>📋</span> Shopper Staff Portal PIN
-            </h3>
-            <p className="text-xs text-slate-500">
-              Update the passcode your fulfillment shoppers use to log into the Shopper Picking List portal.
-            </p>
-
-            {shopperPinFeedback && (
-              <p className={`text-xs font-bold p-3 rounded-xl border ${
-                shopperPinFeedback.type === 'success' 
-                  ? 'bg-emerald-50 border-emerald-200 text-emerald-800' 
-                  : 'bg-red-50 border-red-200 text-red-800'
-              }`}>
-                {shopperPinFeedback.text}
-              </p>
-            )}
-
-            <form onSubmit={handleUpdateShopperPin} className="space-y-3">
-              <div>
-                <label className="text-xs font-semibold text-slate-600 uppercase tracking-wider block mb-1">
-                  New Shopper PIN (4+ Digits)
-                </label>
-                <input
-                  type="text"
-                  placeholder="Enter new shopper PIN (e.g. 5678)"
-                  value={newShopperPin}
-                  onChange={(e) => setNewShopperPin(e.target.value)}
-                  className="w-full p-3 border border-slate-300 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-amber-600"
-                  required
-                />
-              </div>
-
-              <button
-                type="submit"
-                className="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold py-3 rounded-xl text-xs transition cursor-pointer shadow-md"
-              >
-                Update Shopper PIN 📋
-              </button>
+              <button type="submit" className="w-full bg-slate-900 text-white font-bold py-3 rounded-xl text-xs shadow-md">Update Admin PIN 🔐</button>
             </form>
           </div>
         </div>

@@ -3,6 +3,76 @@ import axios from 'axios';
 import shopinApi from '../services/api';
 import UserTracker from './UserTracker';
 
+function AdminProductsManager({ API_URL, adminPin }) {
+  const [items, setItems] = useState([]);
+  const [editingItem, setEditingItem] = useState(null);
+  const [newName, setNewName] = useState('');
+  const [newPrice, setNewPrice] = useState('');
+
+  useEffect(() => {
+    fetchItems();
+  }, []);
+
+  const fetchItems = async () => {
+    try {
+      const res = await axios.get(`${API_URL}/api/vendors/products`);
+      setItems(res.data.data || []);
+    } catch (err) {
+      console.error("Failed to fetch products:", err);
+    }
+  };
+
+  const handleSaveEdit = async (id) => {
+    try {
+      await axios.put(`${API_URL}/api/admin/vendor-products/${id}`, {
+        product_name: newName,
+        price_ngn: newPrice ? parseFloat(newPrice) : undefined
+      }, {
+        headers: { 'x-admin-pin': adminPin }
+      });
+      alert("✅ Item updated successfully!");
+      setEditingItem(null);
+      fetchItems();
+    } catch (err) {
+      alert("❌ Failed to update item.");
+      console.error(err);
+    }
+  };
+
+  return (
+    <div className="space-y-3">
+      {items.length === 0 ? (
+        <p className="text-xs text-slate-400 text-center py-6">No marketplace items found.</p>
+      ) : (
+        items.map(item => (
+          <div key={item.id} className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between text-xs gap-3">
+            <div>
+              <span className="font-bold text-slate-900 block">{item.product_name}</span>
+              <span className="text-[10px] text-slate-500 uppercase font-semibold">Category: {item.category} • Price: ₦{Number(item.price_ngn || 0).toLocaleString()}</span>
+            </div>
+
+            {editingItem === item.id ? (
+              <div className="flex items-center gap-2">
+                <input type="text" value={newName} onChange={e => setNewName(e.target.value)} placeholder="New Name" className="p-1 border rounded text-xs" />
+                <input type="number" value={newPrice} onChange={e => setNewPrice(e.target.value)} placeholder="New Price" className="w-20 p-1 border rounded text-xs" />
+                <button onClick={() => handleSaveEdit(item.id)} className="bg-emerald-600 text-white px-3 py-1 rounded font-bold cursor-pointer">Save</button>
+                <button onClick={() => setEditingItem(null)} className="bg-slate-300 px-2 py-1 rounded cursor-pointer">Cancel</button>
+              </div>
+            ) : (
+              <button 
+                onClick={() => { setEditingItem(item.id); setNewName(item.product_name); setNewPrice(item.price_ngn || ''); }} 
+                className="bg-slate-900 text-white font-bold px-3 py-1.5 rounded-lg cursor-pointer"
+              >
+                Edit Item ✍️
+              </button>
+            )}
+          </div>
+        ))
+      )}
+    </div>
+  );
+}
+
 export default function AdminDashboard() {
   const [activeAdminTab, setActiveAdminTab] = useState('locations'); 
   const [feedback, setFeedback] = useState(null);
@@ -11,7 +81,7 @@ export default function AdminDashboard() {
   const API_URL = import.meta.env.VITE_API_URL || 'https://shopin-kwara-backend.onrender.com';
   const adminPin = localStorage.getItem('SHOPIN_ADMIN_PIN') || '1234';
 
-  // --- NEW: Dynamic Locations State ---
+  // --- Dynamic Locations State ---
   const [locations, setLocations] = useState({ markets: [], supermarkets: [], restaurants: [] });
   const [newMarket, setNewMarket] = useState('');
   const [newSupermarket, setNewSupermarket] = useState('');
@@ -261,13 +331,14 @@ export default function AdminDashboard() {
         </div>
 
         <div className="flex flex-wrap gap-2">
-          <button onClick={() => setActiveAdminTab('deposits')} className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${activeAdminTab === 'deposits' ? 'bg-orange-600' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}>💳 Deposits</button>
-          <button onClick={() => setActiveAdminTab('locations')} className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${activeAdminTab === 'locations' ? 'bg-indigo-600' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}>📍 Locations</button>
-          <button onClick={() => setActiveAdminTab('users')} className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${activeAdminTab === 'users' ? 'bg-purple-600' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}>👥 Users</button>
-          <button onClick={() => setActiveAdminTab('orders')} className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${activeAdminTab === 'orders' ? 'bg-emerald-600' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}>📦 Orders</button>
-          <button onClick={() => setActiveAdminTab('prices')} className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${activeAdminTab === 'prices' ? 'bg-emerald-600' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}>📊 Prices</button>
-          <button onClick={() => setActiveAdminTab('shuttles')} className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${activeAdminTab === 'shuttles' ? 'bg-blue-600' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}>🚀 Shuttles</button>
-          <button onClick={() => setActiveAdminTab('settings')} className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${activeAdminTab === 'settings' ? 'bg-amber-600' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}>🔐 Security</button>
+          <button onClick={() => setActiveAdminTab('deposits')} className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${activeAdminTab === 'deposits' ? 'bg-orange-600' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}>💳 Deposits</button>
+          <button onClick={() => setActiveAdminTab('locations')} className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${activeAdminTab === 'locations' ? 'bg-indigo-600' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}>📍 Locations</button>
+          <button onClick={() => setActiveAdminTab('products')} className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${activeAdminTab === 'products' ? 'bg-teal-600' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}>🛍️ Manage Items</button>
+          <button onClick={() => setActiveAdminTab('users')} className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${activeAdminTab === 'users' ? 'bg-purple-600' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}>👥 Users</button>
+          <button onClick={() => setActiveAdminTab('orders')} className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${activeAdminTab === 'orders' ? 'bg-emerald-600' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}>📦 Orders</button>
+          <button onClick={() => setActiveAdminTab('prices')} className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${activeAdminTab === 'prices' ? 'bg-emerald-600' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}>📊 Prices</button>
+          <button onClick={() => setActiveAdminTab('shuttles')} className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${activeAdminTab === 'shuttles' ? 'bg-blue-600' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}>🚀 Shuttles</button>
+          <button onClick={() => setActiveAdminTab('settings')} className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${activeAdminTab === 'settings' ? 'bg-amber-600' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}>🔐 Security</button>
         </div>
       </div>
 
@@ -371,6 +442,18 @@ export default function AdminDashboard() {
         </section>
       )}
 
+      {/* TAB: MANAGE VENDOR / RESTAURANT PRODUCTS */}
+      {activeAdminTab === 'products' && (
+        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs max-w-4xl mx-auto space-y-4">
+          <h3 className="font-extrabold text-slate-900 text-base border-b border-slate-100 pb-2">
+            Manage & Edit Restaurant / Marketplace Items
+          </h3>
+          <p className="text-xs text-slate-500">Edit item names, prices, or categories across all vendors and restaurants.</p>
+
+          <AdminProductsManager API_URL={API_URL} adminPin={adminPin} />
+        </div>
+      )}
+
       {/* TAB: USERS */}
       {activeAdminTab === 'users' && <UserTracker />}
 
@@ -441,30 +524,17 @@ export default function AdminDashboard() {
                 <option value="Pasta & Noodles">Pasta & Noodles</option>
                 <option value="Proteins">Fish, Meat & Poultry</option>
                 <option value="Beverages">Beverages & Provisions</option>
+                <option value="Restaurants">Restaurants & Meals</option>
               </select>
             </div>
             <div>
               <label className="text-xs font-semibold text-slate-600 uppercase tracking-wider block mb-1">Measurement Unit</label>
               <select value={unit} onChange={(e) => setUnit(e.target.value)} className="w-full p-2.5 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 outline-none bg-white">
-                <option value="1/8_bag">1/8 Bag</option>
-                <option value="1/4_bag">1/4 Bag</option>
-                <option value="half_bag">1/2 Bag</option>
-                <option value="keg_25l">1 Keg (25 Litres)</option>
-                <option value="basket">Basket</option>
-                <option value="bottle">Bottle</option>
-                <option value="carton">Carton</option>
-                <option value="crate">Crate (Eggs)</option>
-                <option value="derica">Derica</option>
-                <option value="full_bag">Full Bag (50kg)</option>
-                <option value="kg">Kg</option>
-                <option value="milk_tin">Milk Tin</option>
-                <option value="mudu">Mudu / Module</option>
-                <option value="naira_value">Custom ₦ Budget</option>
+                <option value="plate">Plate (Meals)</option>
                 <option value="pack">Pack</option>
-                <option value="paint_rubber">Paint Rubber</option>
-                <option value="sachet">Sachet</option>
-                <option value="tuber">Tuber</option>
                 <option value="unit">Unit</option>
+                <option value="paint_rubber">Paint Rubber</option>
+                <option value="full_bag">Full Bag (50kg)</option>
               </select>
             </div>
           </div>
@@ -476,7 +546,6 @@ export default function AdminDashboard() {
             </label>
           </div>
 
-          {/* UPDATED: NOW USES DYNAMIC LOCATIONS FROM YOUR DB! */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-semibold text-slate-600 uppercase tracking-wider block mb-1">Primary Market Hub</label>
@@ -528,7 +597,6 @@ export default function AdminDashboard() {
       {/* TAB: SECURITY & PIN SETTINGS */}
       {activeAdminTab === 'settings' && (
         <div className="max-w-xl mx-auto space-y-6">
-          {/* Admin Passcode Card */}
           <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-4">
             <h3 className="font-extrabold text-slate-900 text-base border-b border-slate-100 pb-2 flex items-center gap-2">
               <span>🔐</span> Admin Security Passcode
@@ -556,7 +624,6 @@ export default function AdminDashboard() {
             </form>
           </div>
 
-          {/* Shopper Staff PIN Manager Card */}
           <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-4">
             <h3 className="font-extrabold text-slate-900 text-base border-b border-slate-100 pb-2 flex items-center gap-2">
               <span>📋</span> Shopper Staff Portal PIN

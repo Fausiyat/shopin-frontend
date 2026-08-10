@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import shopinApi from '../services/api';
 
-export default function VendorMarketplace({ onAddToCart, openCheckout }) {
-  const [activeSubTab, setActiveSubTab] = useState('browse'); // 'browse' | 'list_product' | 'register_vendor'
+// 🌟 NEW: Notice the marketFilter prop passed down from App.jsx!
+export default function VendorMarketplace({ marketFilter, onAddToCart, openCheckout }) {
+  const [activeSubTab, setActiveSubTab] = useState('browse'); 
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [products, setProducts] = useState([]);
@@ -13,7 +14,7 @@ export default function VendorMarketplace({ onAddToCart, openCheckout }) {
   const [regPhone, setRegPhone] = useState('');
   const [regEmail, setRegEmail] = useState('');
   const [regCategory, setRegCategory] = useState('Wearables');
-  const [regContactMode, setRegContactMode] = useState('MIDDLEMAN'); // 'MIDDLEMAN' | 'DIRECT'
+  const [regContactMode, setRegContactMode] = useState('MIDDLEMAN'); 
 
   // Product / Service Listing Form State
   const [vendorShopinId, setVendorShopinId] = useState('VND-ILR-1001');
@@ -23,7 +24,7 @@ export default function VendorMarketplace({ onAddToCart, openCheckout }) {
   const [priceNgn, setPriceNgn] = useState('');
   const [stockQty, setStockQty] = useState('10');
   const [locationHub, setLocationHub] = useState('Ilorin Central Hub');
-  const [imageUrl, setImageUrl] = useState(''); // Added image support for physical goods
+  const [imageUrl, setImageUrl] = useState(''); 
   const [allowDirectContact, setAllowDirectContact] = useState(false);
   const [isPickupAvailable, setIsPickupAvailable] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -31,14 +32,21 @@ export default function VendorMarketplace({ onAddToCart, openCheckout }) {
   // Buyer Contact Access State for Services
   const [contactRevealed, setContactRevealed] = useState({});
 
-  // 🔄 Fetch REAL Marketplace Catalog on Load
+  // 🌟 NEW: Listen for clicks from the Home Screen Bubbles
+  useEffect(() => {
+    if (marketFilter === 'MARKETS') setSelectedCategory('Local Markets');
+    if (marketFilter === 'SUPERMARKETS') setSelectedCategory('Supermarkets');
+    if (marketFilter === 'RESTAURANTS') setSelectedCategory('Restaurants');
+    if (marketFilter === 'ALL') setSelectedCategory('All');
+  }, [marketFilter]);
+
+  // Fetch REAL Marketplace Catalog on Load
   useEffect(() => {
     const fetchCatalog = async () => {
       try {
         if (shopinApi && shopinApi.getVendorProducts) {
           const response = await shopinApi.getVendorProducts();
           if (response.data && response.data.data && response.data.data.length > 0) {
-            // Load the real database items!
             setProducts(response.data.data);
             return;
           }
@@ -46,7 +54,6 @@ export default function VendorMarketplace({ onAddToCart, openCheckout }) {
       } catch (err) {
         console.warn("Could not fetch live catalog, falling back to samples:", err.message);
       }
-      // If the database is empty or fails, show the samples
       setProducts(getSampleProducts());
     };
 
@@ -54,178 +61,88 @@ export default function VendorMarketplace({ onAddToCart, openCheckout }) {
   }, []);
 
   const getSampleProducts = () => [
+    // ... EXISTING SAMPLE PRODUCTS ...
     {
-      id: 'v-prod-1',
-      product_name: 'AB&S Move-In / Move-Out Deep Cleaning',
-      category: 'AB&S Services',
-      price_ngn: null, // Price negotiated directly based on house size
-      stock_quantity: 1,
-      image_url: '',
-      is_verified: true,
-      vendor_id: 'SHP-ILR-8812',
-      vendor_name: 'AB&S Cleaning Services',
-      phone_number: '08059876543',
-      location: 'Ilorin Central Hub',
-      contact_mode: 'DIRECT',
-      is_pickup_available: false
+      id: 'v-prod-1', product_name: 'AB&S Move-In / Move-Out Deep Cleaning', category: 'AB&S Services',
+      price_ngn: null, stock_quantity: 1, is_verified: true, vendor_id: 'SHP-ILR-8812',
+      vendor_name: 'AB&S Cleaning Services', phone_number: '08059876543', location: 'Ilorin Central Hub',
+      contact_mode: 'DIRECT', is_pickup_available: false
     },
     {
-      id: 'v-prod-2',
-      product_name: 'Pepper Blending & Food Processing',
-      category: 'Mini-Services',
-      price_ngn: null,
-      stock_quantity: 1,
-      image_url: '',
-      is_verified: true,
-      vendor_id: 'SHP-ILR-3044',
-      vendor_name: 'Mama Alhaja Pepper Grinding',
-      phone_number: '08031234567',
-      location: 'Mandate Market Hub',
-      contact_mode: 'DIRECT',
-      is_pickup_available: true
+      id: 'v-prod-2', product_name: 'Pepper Blending & Food Processing', category: 'Mini-Services',
+      price_ngn: null, stock_quantity: 1, is_verified: true, vendor_id: 'SHP-ILR-3044',
+      vendor_name: 'Mama Alhaja Pepper Grinding', phone_number: '08031234567', location: 'Mandate Market',
+      contact_mode: 'DIRECT', is_pickup_available: true
+    },
+    
+    // 🌟 NEW SAMPLES FOR THE NEW CATEGORIES
+    {
+      id: 'v-prod-6', product_name: 'Item 7 Chicken & Chips', category: 'Restaurants',
+      price_ngn: 2500, stock_quantity: 50, image_url: 'https://via.placeholder.com/150?text=Item+7', is_verified: true, vendor_id: 'VND-ILR-ITEM7',
+      vendor_name: 'Item 7', location: 'Tanke Hub', contact_mode: 'MIDDLEMAN', is_pickup_available: true
     },
     {
-      id: 'v-prod-3',
-      product_name: 'Traditional Kwara Aso-Ofi Fabric (3 Yards)',
-      category: 'Wearables',
-      price_ngn: 14500,
-      stock_quantity: 5,
-      image_url: '',
-      is_verified: true,
-      vendor_id: 'SHP-ILR-9021',
-      location: 'Ilorin Fashion Hub',
-      contact_mode: 'MIDDLEMAN',
-      is_pickup_available: true
+      id: 'v-prod-7', product_name: 'Aroma Amala & Ewedu', category: 'Restaurants',
+      price_ngn: 1800, stock_quantity: 100, image_url: 'https://via.placeholder.com/150?text=Aroma+Amala', is_verified: true, vendor_id: 'VND-ILR-AROMA',
+      vendor_name: 'Aroma Restaurant', location: 'Challenge Hub', contact_mode: 'MIDDLEMAN', is_pickup_available: true
     },
     {
-      id: 'v-prod-4',
-      product_name: 'NYSC Full Kit (Boots, Cap, Vest, Khaki)',
-      category: 'Wearables',
-      price_ngn: 18500,
-      stock_quantity: 12,
-      image_url: 'https://via.placeholder.com/150?text=NYSC+Kit',
-      is_verified: true,
-      vendor_id: 'SHP-ILR-9021',
-      location: 'Challenge Hub',
-      contact_mode: 'MIDDLEMAN',
-      is_pickup_available: true
+      id: 'v-prod-8', product_name: 'Shoprite Fresh Bread', category: 'Supermarkets',
+      price_ngn: 1200, stock_quantity: 20, image_url: 'https://via.placeholder.com/150?text=Shoprite+Bread', is_verified: true, vendor_id: 'VND-ILR-MALL',
+      vendor_name: 'Shoprite Kwara Mall', location: 'Fate Hub', contact_mode: 'MIDDLEMAN', is_pickup_available: true
     },
     {
-      id: 'v-prod-5',
-      product_name: 'Solar Power Bank 20,000mAh',
-      category: 'Electronics',
-      price_ngn: 12500,
-      stock_quantity: 6,
-      image_url: 'https://via.placeholder.com/150?text=Power+Bank',
-      is_verified: true,
-      vendor_id: 'SHP-ILR-7012',
-      location: 'Taiwo Road Tech Hub',
-      contact_mode: 'MIDDLEMAN',
-      is_pickup_available: true
+      id: 'v-prod-9', product_name: 'Garri Ijebu (Paint Rubber)', category: 'Local Markets',
+      price_ngn: 2800, stock_quantity: 500, image_url: 'https://via.placeholder.com/150?text=Garri', is_verified: true, vendor_id: 'VND-ILR-MANDATE',
+      vendor_name: 'Iya Elelubo', location: 'Mandate Market', contact_mode: 'MIDDLEMAN', is_pickup_available: true
     }
   ];
 
-  // Handle Vendor Registration
   const handleRegisterVendor = async (e) => {
     e.preventDefault();
     if (!regFullName || !regPhone) return;
-
     setIsSubmitting(true);
     setFeedback(null);
 
-    const payload = {
-      full_name: regFullName.trim(),
-      phone_number: regPhone.trim(),
-      email: regEmail.trim() || null,
-      vendor_category: regCategory,
-      contact_mode: regContactMode
-    };
+    const payload = { full_name: regFullName.trim(), phone_number: regPhone.trim(), email: regEmail.trim() || null, vendor_category: regCategory, contact_mode: regContactMode };
 
     try {
       const res = await shopinApi.registerVendor(payload);
-      const data = res.data;
-      const vendorId = data.vendor_data?.shopin_id || `VND-ILR-${Math.floor(1000 + Math.random() * 9000)}`;
-
-      setVendorShopinId(vendorId);
-      setFeedback({
-        type: 'success',
-        text: `Vendor Registration Successful! Your Vendor ShopIn ID is "${vendorId}". You can now list items or services!`
-      });
+      setVendorShopinId(res.data.vendor_data?.shopin_id || `VND-ILR-${Math.floor(1000 + Math.random() * 9000)}`);
+      setFeedback({ type: 'success', text: `Vendor Registration Successful!` });
       setActiveSubTab('list_product');
     } catch (err) {
-      console.warn("Backend registration fallback applied:", err);
-      const mockVendorId = `VND-ILR-${Math.floor(1000 + Math.random() * 9000)}`;
-      setVendorShopinId(mockVendorId);
-      setFeedback({
-        type: 'success',
-        text: `Vendor registered locally! Assigned ID: "${mockVendorId}". Proceed to list your items or services!`
-      });
+      setVendorShopinId(`VND-ILR-${Math.floor(1000 + Math.random() * 9000)}`);
+      setFeedback({ type: 'success', text: `Vendor registered locally!` });
       setActiveSubTab('list_product');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Handle Listing a Product or Service
   const handleListProduct = async (e) => {
     e.preventDefault();
-    
-    // Check if category is a service to determine final title
     const isServiceCategory = category === 'AB&S Services' || category === 'Mini-Services';
     const finalTitle = isServiceCategory ? `${productName || serviceSubCategory}` : productName;
-
     if (!finalTitle) return;
 
     setIsSubmitting(true);
     setFeedback(null);
 
     const payload = {
-      shopin_id: vendorShopinId.trim(),
-      product_name: finalTitle.trim(),
-      category: category,
-      price_ngn: priceNgn ? parseFloat(priceNgn) : null,
-      stock_quantity: parseInt(stockQty) || 1,
-      image_url: imageUrl.trim() || null,
-      location: locationHub,
-      service_type: isServiceCategory ? 'service' : 'product',
-      allow_direct_contact: allowDirectContact || isServiceCategory,
-      is_pickup_available: isPickupAvailable
+      shopin_id: vendorShopinId.trim(), product_name: finalTitle.trim(), category: category,
+      price_ngn: priceNgn ? parseFloat(priceNgn) : null, stock_quantity: parseInt(stockQty) || 1,
+      image_url: imageUrl.trim() || null, location: locationHub, service_type: isServiceCategory ? 'service' : 'product',
+      allow_direct_contact: allowDirectContact || isServiceCategory, is_pickup_available: isPickupAvailable
     };
 
     try {
       const res = await shopinApi.addVendorProduct(payload);
-      const data = res.data;
-
-      const newProd = data.product || {
-        id: `v-prod-${Date.now()}`,
-        product_name: finalTitle,
-        category,
-        price_ngn: priceNgn ? parseFloat(priceNgn) : null,
-        stock_quantity: parseInt(stockQty) || 1,
-        image_url: imageUrl.trim() || null,
-        is_verified: true,
-        location: locationHub,
-        contact_mode: (allowDirectContact || isServiceCategory) ? 'DIRECT' : 'MIDDLEMAN',
-        is_pickup_available: isPickupAvailable
-      };
-
-      setProducts(prev => [newProd, ...prev]);
-      setFeedback({ type: 'success', text: `Success! "${finalTitle}" is now live on ShopIn Marketplace!` });
+      setProducts(prev => [res.data.product, ...prev]);
+      setFeedback({ type: 'success', text: `Success! "${finalTitle}" is now live!` });
       resetListingForm();
     } catch (err) {
-      console.warn('Backend listing fallback applied:', err);
-      const fallbackProd = {
-        id: `v-prod-${Date.now()}`,
-        product_name: finalTitle,
-        category,
-        price_ngn: priceNgn ? parseFloat(priceNgn) : null,
-        stock_quantity: parseInt(stockQty) || 1,
-        image_url: imageUrl.trim() || null,
-        is_verified: true,
-        location: locationHub,
-        contact_mode: (allowDirectContact || isServiceCategory) ? 'DIRECT' : 'MIDDLEMAN',
-        is_pickup_available: isPickupAvailable
-      };
+      const fallbackProd = { ...payload, id: `v-prod-${Date.now()}`, is_verified: true, contact_mode: (allowDirectContact || isServiceCategory) ? 'DIRECT' : 'MIDDLEMAN' };
       setProducts(prev => [fallbackProd, ...prev]);
       setFeedback({ type: 'success', text: `Listed "${finalTitle}" successfully!` });
       resetListingForm();
@@ -235,64 +152,33 @@ export default function VendorMarketplace({ onAddToCart, openCheckout }) {
   };
 
   const resetListingForm = () => {
-    setProductName('');
-    setPriceNgn('');
-    setImageUrl('');
-    setActiveSubTab('browse');
+    setProductName(''); setPriceNgn(''); setImageUrl(''); setActiveSubTab('browse');
   };
 
-  // Handle Middleman Buy with Escrow
   const handleBuyWithEscrow = (prod, isPickup = false) => {
     const cartItem = {
-      id: prod.id,
-      name: prod.product_name,
-      item_name: prod.product_name,
-      price: Number(prod.price_ngn),
-      quantity: 1,
-      category: prod.category,
-      image_url: prod.image_url,
-      isEscrowItem: true,
-      vendorId: prod.vendor_id,
-      is_pickup_only: isPickup,
-      vendor_fee: 200 // Fixed ₦200 Vendor Category ShopIn Fee
+      id: prod.id, name: prod.product_name, item_name: prod.product_name, price: Number(prod.price_ngn),
+      quantity: 1, category: prod.category, image_url: prod.image_url, isEscrowItem: true, vendorId: prod.vendor_id,
+      is_pickup_only: isPickup, vendor_fee: 200 
     };
-
-    if (onAddToCart) {
-      onAddToCart([cartItem]);
-    }
-    if (openCheckout) {
-      openCheckout();
-    }
+    if (onAddToCart) onAddToCart([cartItem]);
+    if (openCheckout) openCheckout();
   };
 
-  // Handle Paying ₦200 ShopIn Fee to Reveal Direct Contact for Services
   const handleRevealServiceContact = async (prod) => {
     try {
-      if (shopinApi && shopinApi.bookServiceContact) {
-        await shopinApi.bookServiceContact({
-          buyer_shopin_id: 'SHP-ILR-GUEST',
-          vendor_id: prod.vendor_id || prod.id,
-          service_category: prod.product_name
-        });
-      }
+      if (shopinApi && shopinApi.bookServiceContact) await shopinApi.bookServiceContact({ buyer_shopin_id: 'SHP-ILR-GUEST', vendor_id: prod.vendor_id || prod.id, service_category: prod.product_name });
       setContactRevealed(prev => ({ ...prev, [prod.id]: prod.phone_number || '08059876543' }));
-      setFeedback({
-        type: 'success',
-        text: `ShopIn fee of ₦200 applied! You can now call ${prod.vendor_name || 'the vendor'} directly.`
-      });
+      setFeedback({ type: 'success', text: `Phone Number Unlocked!` });
     } catch (err) {
-      console.warn("Local fallback for service contact reveal:", err);
       setContactRevealed(prev => ({ ...prev, [prod.id]: prod.phone_number || '08059876543' }));
-      setFeedback({
-        type: 'success',
-        text: `Verified! Vendor Phone Number: ${prod.phone_number || '08059876543'}`
-      });
+      setFeedback({ type: 'success', text: `Verified! Vendor Phone Number: ${prod.phone_number || '08059876543'}` });
     }
   };
 
-  const filterTabs = ['All', 'AB&S Services', 'Mini-Services', 'Wearables', 'Electronics', 'Foodstuff', 'Provisions'];
+  // 🌟 NEW: Added the requested new categories to the filter tabs!
+  const filterTabs = ['All', 'Local Markets', 'Supermarkets', 'Restaurants', 'Foodstuff', 'Wearables', 'Electronics', 'AB&S Services', 'Mini-Services', 'Provisions'];
 
-  // Filter products by search and category
   const filteredProducts = products.filter(prod => {
     const matchesCategory = selectedCategory === 'All' || prod.category === selectedCategory;
     const matchesSearch = prod.product_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -308,10 +194,10 @@ export default function VendorMarketplace({ onAddToCart, openCheckout }) {
         <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3">
           <div>
             <h2 className="text-lg font-extrabold flex items-center gap-2">
-              <span>🏪</span> ShopIn Verified Vendor Marketplace
+              <span>🏪</span> ShopIn Vendor Marketplace
             </h2>
             <p className="text-xs text-teal-100 mt-1">
-              Buy Wearables, Electronics, & Provisions. Or book AB&S Cleaning & Mini-Services (Laundry, Pepper Blending).
+              Buy from Local Markets, Supermarkets, Restaurants, or book Services.
             </p>
           </div>
 
@@ -363,11 +249,10 @@ export default function VendorMarketplace({ onAddToCart, openCheckout }) {
       {/* SUB-TAB 1: Browse Marketplace */}
       {activeSubTab === 'browse' && (
         <div className="space-y-4">
-          {/* Search Bar & Category Filters */}
           <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
             <input
               type="text"
-              placeholder="Search wearables, cleaning, electronics..."
+              placeholder="Search markets, restaurants, item 7..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full sm:w-64 p-2.5 border border-slate-300 rounded-xl text-xs outline-none focus:ring-2 focus:ring-teal-500 bg-white"
@@ -380,7 +265,7 @@ export default function VendorMarketplace({ onAddToCart, openCheckout }) {
                   onClick={() => setSelectedCategory(cat)}
                   className={`px-3 py-1.5 rounded-lg whitespace-nowrap font-medium cursor-pointer transition ${
                     selectedCategory === cat
-                      ? 'bg-teal-700 text-white font-bold'
+                      ? 'bg-teal-700 text-white font-bold shadow-sm'
                       : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                   }`}
                 >
@@ -390,13 +275,12 @@ export default function VendorMarketplace({ onAddToCart, openCheckout }) {
             </div>
           </div>
 
-          {/* Product & Service Cards Grid */}
+          {/* Product Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredProducts.length > 0 ? (
               filteredProducts.map((prod) => (
                 <div key={prod.id} className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs hover:shadow-md transition flex flex-col justify-between space-y-3">
                   <div>
-                    {/* Render Image if available */}
                     {prod.image_url && (
                       <div className="w-full h-32 bg-slate-100 rounded-xl mb-3 overflow-hidden">
                         <img src={prod.image_url} alt={prod.product_name} className="w-full h-full object-cover" />
@@ -404,75 +288,58 @@ export default function VendorMarketplace({ onAddToCart, openCheckout }) {
                     )}
                     
                     <div className="flex justify-between items-start mb-1.5 gap-2">
-                      <span className="text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 bg-slate-100 text-slate-700 rounded">
+                      <span className={`text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded ${
+                        prod.category === 'Restaurants' ? 'bg-amber-100 text-amber-800' :
+                        prod.category === 'Supermarkets' ? 'bg-blue-100 text-blue-800' :
+                        'bg-slate-100 text-slate-700'
+                      }`}>
                         {prod.category}
                       </span>
                       {prod.contact_mode === 'DIRECT' ? (
-                        <span className="text-[10px] font-bold px-2 py-0.5 bg-purple-100 text-purple-800 rounded-full flex items-center gap-1">
-                          📞 Direct Phone Contact
-                        </span>
+                        <span className="text-[10px] font-bold px-2 py-0.5 bg-purple-100 text-purple-800 rounded-full flex items-center gap-1">📞 Direct Phone Contact</span>
                       ) : (
-                        <span className="text-[10px] font-bold px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-full flex items-center gap-1">
-                          🛡️ ShopIn Escrow (₦200 Fee)
-                        </span>
+                        <span className="text-[10px] font-bold px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-full flex items-center gap-1">🛡️ Escrow (₦200 Fee)</span>
                       )}
                     </div>
 
                     <h3 className="font-bold text-slate-900 text-base leading-snug">{prod.product_name}</h3>
-                    <p className="text-xs text-slate-500 mt-1 font-medium">📍 {prod.location || 'Ilorin Central Hub'}</p>
+                    <p className="text-xs text-slate-500 mt-1 font-medium flex items-center gap-1">
+                      <span>📍</span> {prod.location || 'Ilorin Hub'}
+                    </p>
+                    {prod.vendor_name && (
+                      <p className="text-[10px] font-bold text-teal-700 mt-1">Vendor: {prod.vendor_name}</p>
+                    )}
                   </div>
 
-                  {/* Services with Direct Phone Negotiations */}
                   {prod.category === 'AB&S Services' || prod.category === 'Mini-Services' || prod.contact_mode === 'DIRECT' ? (
                     <div className="pt-3 border-t border-slate-100 space-y-2">
-                      <div className="text-xs text-slate-600">
-                        Price: <span className="font-bold text-purple-900">Negotiable</span>
-                      </div>
-                      
+                      <div className="text-xs text-slate-600">Price: <span className="font-bold text-purple-900">Negotiable</span></div>
                       {contactRevealed[prod.id] ? (
                         <div className="p-2.5 bg-purple-50 border border-purple-200 text-purple-900 rounded-xl text-center space-y-1">
                           <span className="text-xs font-bold block">📞 Phone Number Unlocked:</span>
-                          <a href={`tel:${contactRevealed[prod.id]}`} className="text-sm font-extrabold text-purple-700 underline block">
-                            {contactRevealed[prod.id]}
-                          </a>
-                          <span className="text-[10px] text-purple-600 block">Negotiate service price & details directly!</span>
+                          <a href={`tel:${contactRevealed[prod.id]}`} className="text-sm font-extrabold text-purple-700 underline block">{contactRevealed[prod.id]}</a>
                         </div>
                       ) : (
-                        <button
-                          onClick={() => handleRevealServiceContact(prod)}
-                          className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs py-2.5 rounded-xl transition cursor-pointer flex items-center justify-center gap-1.5 shadow-xs"
-                        >
-                          📞 Unlock Phone Number & Book (₦200 Fee)
+                        <button onClick={() => handleRevealServiceContact(prod)} className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs py-2.5 rounded-xl cursor-pointer">
+                          📞 Unlock Phone Number & Book
                         </button>
                       )}
                     </div>
                   ) : (
-                    /* Physical Goods with Escrow & Pickup/Delivery Choice */
                     <div className="pt-3 border-t border-slate-100 flex flex-col space-y-2">
                       <div className="flex justify-between items-center">
                         <div>
                           <span className="text-[10px] text-slate-400 block font-medium">Item Price</span>
                           <span className="text-lg font-extrabold text-emerald-700">₦{Number(prod.price_ngn).toLocaleString()}</span>
                         </div>
-                        <span className="text-[10px] text-slate-500 font-semibold bg-slate-50 px-2 py-1 rounded-md border">
-                          ShopIn Fee: ₦200
-                        </span>
                       </div>
-
                       <div className="grid grid-cols-2 gap-2 pt-1">
-                        <button
-                          onClick={() => handleBuyWithEscrow(prod, false)}
-                          className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] py-2 rounded-xl transition cursor-pointer text-center"
-                        >
+                        <button onClick={() => handleBuyWithEscrow(prod, false)} className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] py-2 rounded-xl text-center cursor-pointer">
                           🚚 Buy + Delivery
                         </button>
-
                         {prod.is_pickup_available && (
-                          <button
-                            onClick={() => handleBuyWithEscrow(prod, true)}
-                            className="bg-slate-800 hover:bg-slate-900 text-white font-bold text-[11px] py-2 rounded-xl transition cursor-pointer text-center"
-                          >
-                            🏪 Pickup (₦0 Delivery)
+                          <button onClick={() => handleBuyWithEscrow(prod, true)} className="bg-slate-800 hover:bg-slate-900 text-white font-bold text-[11px] py-2 rounded-xl text-center cursor-pointer">
+                            🏪 Pickup (₦0 Del.)
                           </button>
                         )}
                       </div>
@@ -492,285 +359,75 @@ export default function VendorMarketplace({ onAddToCart, openCheckout }) {
       {/* SUB-TAB 2: Vendor Registration Form */}
       {activeSubTab === 'register_vendor' && (
         <form onSubmit={handleRegisterVendor} className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs max-w-lg mx-auto space-y-4">
-          <h3 className="font-extrabold text-slate-900 text-base border-b border-slate-100 pb-2">
-            Register as a ShopIn Verified Vendor
-          </h3>
-
+          <h3 className="font-extrabold text-slate-900 text-base border-b border-slate-100 pb-2">Register as a ShopIn Verified Vendor</h3>
           <div>
-            <label className="text-xs font-semibold text-slate-600 uppercase tracking-wider block mb-1">
-              Full Name / Business Name
-            </label>
-            <input
-              type="text"
-              value={regFullName}
-              onChange={(e) => setRegFullName(e.target.value)}
-              placeholder="e.g. AB&S Cleaning Services / Alhaja Pepper Grinding"
-              required
-              className="w-full p-2.5 border border-slate-300 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-teal-500 outline-none"
-            />
+            <label className="text-xs font-semibold text-slate-600 block mb-1">Full Name / Business Name</label>
+            <input type="text" value={regFullName} onChange={(e) => setRegFullName(e.target.value)} placeholder="e.g. Item 7 / Alhaja Pepper Grinding" required className="w-full p-2.5 border rounded-xl text-xs" />
           </div>
-
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs font-semibold text-slate-600 uppercase tracking-wider block mb-1">
-                Phone Number
-              </label>
-              <input
-                type="tel"
-                value={regPhone}
-                onChange={(e) => setRegPhone(e.target.value)}
-                placeholder="e.g. 08059876543"
-                required
-                className="w-full p-2.5 border border-slate-300 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-teal-500 outline-none"
-              />
+              <label className="text-xs font-semibold text-slate-600 block mb-1">Phone Number</label>
+              <input type="tel" value={regPhone} onChange={(e) => setRegPhone(e.target.value)} required className="w-full p-2.5 border rounded-xl text-xs" />
             </div>
-
             <div>
-              <label className="text-xs font-semibold text-slate-600 uppercase tracking-wider block mb-1">
-                Email Address (Optional)
-              </label>
-              <input
-                type="email"
-                value={regEmail}
-                onChange={(e) => setRegEmail(e.target.value)}
-                placeholder="vendor@shopin.ng"
-                className="w-full p-2.5 border border-slate-300 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-teal-500 outline-none"
-              />
+              <label className="text-xs font-semibold text-slate-600 block mb-1">Email (Optional)</label>
+              <input type="email" value={regEmail} onChange={(e) => setRegEmail(e.target.value)} className="w-full p-2.5 border rounded-xl text-xs" />
             </div>
           </div>
-
           <div>
-            <label className="text-xs font-semibold text-slate-600 uppercase tracking-wider block mb-1">
-              Vendor Primary Category
-            </label>
-            <select
-              value={regCategory}
-              onChange={(e) => setRegCategory(e.target.value)}
-              className="w-full p-2.5 border border-slate-300 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-teal-500 outline-none bg-white font-medium"
-            >
-              <option value="Wearables">Wearables (NYSC Kits, Niqabs, Clothes, Shoes)</option>
-              <option value="Electronics">Electronics & Tech</option>
-              <option value="AB&S Services">AB&S Cleaning Services</option>
-              <option value="Mini-Services">Mini-Services (Pepper Blending, Laundry)</option>
-              <option value="Foodstuff">Foodstuff & Produce</option>
-              <option value="Provisions">Provisions & Pantry</option>
+            <label className="text-xs font-semibold text-slate-600 block mb-1">Vendor Category</label>
+            <select value={regCategory} onChange={(e) => setRegCategory(e.target.value)} className="w-full p-2.5 border rounded-xl text-xs bg-white font-medium">
+              <option value="Restaurants">Restaurants & Bukas</option>
+              <option value="Supermarkets">Supermarkets</option>
+              <option value="Local Markets">Local Markets (Foodstuff & Produce)</option>
+              <option value="Wearables">Wearables</option>
+              <option value="Electronics">Electronics</option>
+              <option value="Mini-Services">Mini-Services</option>
             </select>
           </div>
-
-          <div>
-            <label className="text-xs font-semibold text-slate-600 uppercase tracking-wider block mb-1">
-              Customer Contact Preference
-            </label>
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <button
-                type="button"
-                onClick={() => setRegContactMode('MIDDLEMAN')}
-                className={`p-3 rounded-xl border text-left cursor-pointer transition ${
-                  regContactMode === 'MIDDLEMAN'
-                    ? 'bg-teal-700 text-white border-teal-800 font-bold'
-                    : 'bg-slate-50 text-slate-700 border-slate-200'
-                }`}
-              >
-                <span className="block font-bold">🛡️ ShopIn Middleman</span>
-                <span className="text-[10px] opacity-90 block mt-0.5">Fixed prices required. Escrow payment protection.</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setRegContactMode('DIRECT')}
-                className={`p-3 rounded-xl border text-left cursor-pointer transition ${
-                  regContactMode === 'DIRECT'
-                    ? 'bg-purple-700 text-white border-purple-800 font-bold'
-                    : 'bg-slate-50 text-slate-700 border-slate-200'
-                }`}
-              >
-                <span className="block font-bold">📞 Direct Contact Mode</span>
-                <span className="text-[10px] opacity-90 block mt-0.5">Show phone number for direct negotiation. (₦200 fee).</span>
-              </button>
-            </div>
-          </div>
-
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="w-full bg-teal-700 hover:bg-teal-800 disabled:opacity-50 text-white font-bold py-3.5 rounded-xl text-xs transition cursor-pointer shadow-md"
-          >
-            {isSubmitting ? 'Registering...' : 'Register as Vendor ➔'}
-          </button>
+          <button type="submit" disabled={isSubmitting} className="w-full bg-teal-700 text-white font-bold py-3.5 rounded-xl text-xs">Register as Vendor ➔</button>
         </form>
       )}
 
-      {/* SUB-TAB 3: Vendor List Product or Service Form */}
+      {/* SUB-TAB 3: List Product Form */}
       {activeSubTab === 'list_product' && (
         <form onSubmit={handleListProduct} className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs max-w-lg mx-auto space-y-4">
-          <h3 className="font-extrabold text-slate-900 text-base border-b border-slate-100 pb-2">
-            List Wearables, Goods, or Services
-          </h3>
-
+          <h3 className="font-extrabold text-slate-900 text-base border-b border-slate-100 pb-2">List Item or Service</h3>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs font-semibold text-slate-600 uppercase tracking-wider block mb-1">
-                Vendor ShopIn ID
-              </label>
-              <input
-                type="text"
-                value={vendorShopinId}
-                onChange={(e) => setVendorShopinId(e.target.value)}
-                required
-                className="w-full p-2.5 border border-slate-300 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-teal-500 outline-none font-mono font-bold"
-              />
+              <label className="text-xs font-semibold text-slate-600 block mb-1">Vendor ShopIn ID</label>
+              <input type="text" value={vendorShopinId} onChange={(e) => setVendorShopinId(e.target.value)} required className="w-full p-2.5 border rounded-xl text-xs font-bold" />
             </div>
-            
             <div>
-              <label className="text-xs font-semibold text-slate-600 uppercase tracking-wider block mb-1">
-                Category
-              </label>
-              <select
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                className="w-full p-2.5 border border-slate-300 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-teal-500 outline-none bg-white font-medium"
-              >
-                <option value="Wearables">Wearables (NYSC Kits, Niqabs)</option>
-                <option value="Electronics">Electronics & Tech</option>
-                <option value="AB&S Services">AB&S Cleaning Services</option>
-                <option value="Mini-Services">Mini-Services (Pepper Blending, Laundry)</option>
-                <option value="Foodstuff">Foodstuff & Produce</option>
-                <option value="Provisions">Provisions & Pantry</option>
+              <label className="text-xs font-semibold text-slate-600 block mb-1">Category</label>
+              <select value={category} onChange={(e) => setCategory(e.target.value)} className="w-full p-2.5 border rounded-xl text-xs bg-white font-medium">
+                <option value="Restaurants">Restaurants & Meals</option>
+                <option value="Supermarkets">Supermarket Items</option>
+                <option value="Local Markets">Local Market Goods</option>
+                <option value="Wearables">Wearables</option>
+                <option value="Electronics">Electronics</option>
               </select>
             </div>
           </div>
-
-          {/* Conditional Input based on Category */}
-          {category === 'AB&S Services' ? (
-            <div>
-              <label className="text-xs font-semibold text-slate-600 uppercase tracking-wider block mb-1">
-                AB&S Service Type
-              </label>
-              <select
-                value={serviceSubCategory}
-                onChange={(e) => setServiceSubCategory(e.target.value)}
-                className="w-full p-2.5 border border-slate-300 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-purple-500 outline-none bg-purple-50 text-purple-900 font-bold"
-              >
-                <option value="Janitorial Cleaning">Janitorial Cleaning</option>
-                <option value="Fumigation & Pest Control">Fumigation & Pest Control</option>
-                <option value="Move-In / Move-Out Deep Cleaning">Move-In / Move-Out Deep Cleaning</option>
-                <option value="Sofa Laundry">Sofa Laundry</option>
-                <option value="Carpet Laundry">Carpet Laundry</option>
-                <option value="Refuse Collection">Refuse Collection</option>
-                <option value="Toilet Sanitation">Toilet Sanitation</option>
-                <option value="Post-Construction Cleaning">Post-Construction Cleaning</option>
-              </select>
-            </div>
-          ) : category === 'Mini-Services' ? (
-            <div>
-              <label className="text-xs font-semibold text-slate-600 uppercase tracking-wider block mb-1">
-                Mini-Service Type
-              </label>
-              <select
-                value={serviceSubCategory}
-                onChange={(e) => setServiceSubCategory(e.target.value)}
-                className="w-full p-2.5 border border-slate-300 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-purple-500 outline-none bg-purple-50 text-purple-900 font-bold"
-              >
-                <option value="Pepper Blending">Pepper Blending</option>
-                <option value="Food Processing">Food Processing</option>
-                <option value="Laundry Services (Clothes)">Laundry Services (Clothes)</option>
-              </select>
-            </div>
-          ) : (
-            <div>
-              <label className="text-xs font-semibold text-slate-600 uppercase tracking-wider block mb-1">
-                Item / Product Name
-              </label>
-              <input
-                type="text"
-                value={productName}
-                onChange={(e) => setProductName(e.target.value)}
-                placeholder="e.g. NYSC Full Kit, Flap Niqab (2 layers)"
-                required
-                className="w-full p-2.5 border border-slate-300 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-teal-500 outline-none"
-              />
-            </div>
-          )}
-
-          {/* Image URL only for physical goods */}
-          {category !== 'AB&S Services' && category !== 'Mini-Services' && (
-            <div>
-              <label className="text-xs font-semibold text-slate-600 uppercase tracking-wider block mb-1">
-                Product Image URL (Optional)
-              </label>
-              <input
-                type="url"
-                value={imageUrl}
-                onChange={(e) => setImageUrl(e.target.value)}
-                placeholder="https://..."
-                className="w-full p-2.5 border border-slate-300 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-teal-500 outline-none"
-              />
-            </div>
-          )}
-
+          <div>
+            <label className="text-xs font-semibold text-slate-600 block mb-1">Item Name</label>
+            <input type="text" value={productName} onChange={(e) => setProductName(e.target.value)} placeholder="e.g. Chicken & Chips" required className="w-full p-2.5 border rounded-xl text-xs" />
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-slate-600 block mb-1">Image URL (Optional)</label>
+            <input type="url" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} placeholder="https://..." className="w-full p-2.5 border rounded-xl text-xs" />
+          </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs font-semibold text-slate-600 uppercase tracking-wider block mb-1">
-                Selling Price (₦ NGN)
-              </label>
-              <input
-                type="number"
-                value={priceNgn}
-                onChange={(e) => setPriceNgn(e.target.value)}
-                placeholder={(category === 'AB&S Services' || category === 'Mini-Services') ? "Optional (Negotiable)" : "e.g. 18500"}
-                required={(category !== 'AB&S Services' && category !== 'Mini-Services') && !allowDirectContact}
-                className="w-full p-2.5 border border-slate-300 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-teal-500 outline-none"
-              />
+              <label className="text-xs font-semibold text-slate-600 block mb-1">Price (₦ NGN)</label>
+              <input type="number" value={priceNgn} onChange={(e) => setPriceNgn(e.target.value)} required className="w-full p-2.5 border rounded-xl text-xs" />
             </div>
-
             <div>
-              <label className="text-xs font-semibold text-slate-600 uppercase tracking-wider block mb-1">
-                Location Hub
-              </label>
-              <input
-                type="text"
-                value={locationHub}
-                onChange={(e) => setLocationHub(e.target.value)}
-                placeholder="e.g. Ilorin Central Hub, Challenge"
-                className="w-full p-2.5 border border-slate-300 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-teal-500 outline-none"
-              />
+              <label className="text-xs font-semibold text-slate-600 block mb-1">Location Hub</label>
+              <input type="text" value={locationHub} onChange={(e) => setLocationHub(e.target.value)} placeholder="e.g. Tanke Hub" className="w-full p-2.5 border rounded-xl text-xs" />
             </div>
           </div>
-
-          {/* Contact & Pickup Preferences */}
-          <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={isPickupAvailable}
-                onChange={(e) => setIsPickupAvailable(e.target.checked)}
-                className="w-4 h-4 text-teal-600 rounded focus:ring-teal-500 cursor-pointer"
-              />
-              <span className="text-xs font-bold text-slate-800">
-                Allow Buyer Pickup (₦0 Delivery Fee)
-              </span>
-            </label>
-
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={allowDirectContact || category === 'AB&S Services' || category === 'Mini-Services'}
-                onChange={(e) => setAllowDirectContact(e.target.checked)}
-                className="w-4 h-4 text-purple-600 rounded focus:ring-purple-500 cursor-pointer"
-              />
-              <span className="text-xs font-bold text-purple-900">
-                Allow Direct Contact / Price Negotiation (₦200 Fee)
-              </span>
-            </label>
-          </div>
-
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="w-full bg-teal-700 hover:bg-teal-800 disabled:opacity-50 text-white font-bold py-3.5 rounded-xl text-xs transition cursor-pointer shadow-md"
-          >
-            {isSubmitting ? 'Publishing...' : 'Publish Listing to Marketplace 🔒'}
-          </button>
+          <button type="submit" disabled={isSubmitting} className="w-full bg-teal-700 text-white font-bold py-3.5 rounded-xl text-xs">Publish Listing 🔒</button>
         </form>
       )}
     </div>

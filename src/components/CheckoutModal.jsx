@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import shopinApi from '../services/api';
 
-// Baseline fallback estimated local unit prices in Kwara (₦)
+// Baseline fallback estimated local unit prices in Kwara (₦)[cite: 8]
 const ESTIMATED_PRICES = {
   cup: 350,
   module: 1600,
@@ -39,9 +39,9 @@ export default function CheckoutModal({
   onOrderSuccess,
   onRemoveItem,
   walletBalance = 4500,
-  userSavedAddress = "Tanke Oke-Odo, Ilorin (Default Home)" // Mock saved profile address
+  userSavedAddress = "Tanke Oke-Odo, Ilorin (Default Home)" 
 }) {
-  const [selectedZone, setSelectedZone] = useState('alhikmah'); // 'alhikmah' | 'unilorin' | 'custom_kwara'
+  const [selectedZone, setSelectedZone] = useState('alhikmah'); 
   const [customZoneName, setCustomZoneName] = useState('');
   const [useShuttle, setUseShuttle] = useState(false);
   const [selectedShuttleRoute, setSelectedShuttleRoute] = useState('POL-ALHIKMAH-01');
@@ -50,7 +50,6 @@ export default function CheckoutModal({
   const [isCustomAddress, setIsCustomAddress] = useState(false);
   const [customAddressDetails, setCustomAddressDetails] = useState('');
 
-  const [paymentMode, setPaymentMode] = useState('full'); 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isConfirmed, setIsConfirmed] = useState(false);
   const [orderData, setOrderData] = useState(null);
@@ -78,28 +77,24 @@ export default function CheckoutModal({
     return rawTitle.trim();
   };
 
-  // Calculate item estimates dynamically
+  // Calculate item estimates dynamically[cite: 8]
   const calculateItemCost = (item, idx) => {
     const isErrand = item.category === 'Custom Errand';
     const isNairaVal = (item.unit || '').toLowerCase() === 'naira_value';
 
-    // 1. Manual user overrides trump all
     if (customPrices[idx] !== undefined && customPrices[idx] !== '') {
       const overrideVal = parseFloat(customPrices[idx]) || 0;
       return (isErrand || isNairaVal) ? overrideVal : (item.quantity || 1) * overrideVal;
     }
 
-    // 2. Custom Errands default to ₦0 (only delivery + service fee applies)
     if (isErrand || item.is_pickup_only) {
       return 0;
     }
 
-    // 3. User-defined variable budget (e.g., "500 Naira Tomatoes")
     if (isNairaVal) {
       return parseFloat(item.quantity) || 0;
     }
 
-    // 4. Standard estimated pricing
     const unitKey = (item.unit || '').toLowerCase();
     const unitPrice = item.price || ESTIMATED_PRICES[unitKey] || ESTIMATED_PRICES.default;
     return (item.quantity || 1) * unitPrice;
@@ -109,22 +104,18 @@ export default function CheckoutModal({
     ? items.reduce((sum, item, idx) => sum + calculateItemCost(item, idx), 0) 
     : 0;
 
-  // 🚚 Dynamic Delivery Fee Calculation
+  // 🚚 Dynamic Delivery Fee Calculation[cite: 8]
   let currentDeliveryFee = 0;
   if (selectedZone === 'alhikmah') {
     currentDeliveryFee = useShuttle ? 1300 : 1500;
   } else if (selectedZone === 'unilorin') {
     currentDeliveryFee = useShuttle ? 1800 : 2000;
   } else if (selectedZone === 'custom_kwara') {
-    currentDeliveryFee = 3000; // Flat express rate for non-route Kwara areas
+    currentDeliveryFee = 3000; 
   }
 
   const serviceFee = 500; 
   const grandTotal = estimatedItemCost + currentDeliveryFee + serviceFee;
-
-  const minDepositRequired = Math.ceil(grandTotal * 0.30);
-  const amountToDeduct = paymentMode === 'full' ? grandTotal : minDepositRequired;
-  const remainingBalanceToPayLater = Math.max(0, grandTotal - amountToDeduct);
 
   const handlePriceChange = (idx, value) => {
     setCustomPrices((prev) => ({
@@ -139,7 +130,7 @@ export default function CheckoutModal({
       return;
     }
 
-    // 🛡️ UNDER-PRICING PROTECTION CHECK
+    // 🛡️ UNDER-PRICING PROTECTION CHECK[cite: 8]
     for (let idx = 0; idx < items.length; idx++) {
       const item = items[idx];
       const customVal = customPrices[idx];
@@ -157,7 +148,6 @@ export default function CheckoutModal({
       }
     }
 
-    // Custom Address / Zone Check
     if (selectedZone === 'custom_kwara' && !customZoneName.trim()) {
       setErrorMessage("Please specify your town or area name in Kwara.");
       return;
@@ -168,13 +158,8 @@ export default function CheckoutModal({
       return;
     }
 
-    if (paymentMode === 'full' && walletBalance < grandTotal) {
-      setErrorMessage(`Insufficient Stash Wallet balance! Switch to "Pay Small-Small" to reserve this order!`);
-      return;
-    }
-
-    if (paymentMode === 'pay_small_small' && walletBalance < minDepositRequired) {
-      setErrorMessage(`Insufficient deposit balance! Minimum 30% deposit is ₦${minDepositRequired.toLocaleString()}.`);
+    if (walletBalance < grandTotal) {
+      setErrorMessage(`Insufficient Stash Wallet balance! You need ₦${grandTotal.toLocaleString()} to complete this purchase.`);
       return;
     }
 
@@ -201,9 +186,9 @@ export default function CheckoutModal({
       service_fee: serviceFee,
       estimated_total: grandTotal,
       estimated_item_cost: estimatedItemCost,
-      payment_mode: paymentMode,
-      deposit_paid: amountToDeduct,
-      balance_remaining: paymentMode === 'pay_small_small' ? remainingBalanceToPayLater : 0,
+      payment_mode: 'full',
+      deposit_paid: grandTotal, // Always full payment now
+      balance_remaining: 0,
       is_gift: isGifting,
       recipient_info: isGifting ? { name: recipientName.trim(), phone: recipientPhone.trim(), address: recipientAddress.trim() } : null
     };
@@ -221,12 +206,12 @@ export default function CheckoutModal({
       setOrderData(createdOrder);
       setIsConfirmed(true);
 
-      if (onOrderSuccess) onOrderSuccess(createdOrder, amountToDeduct);
+      if (onOrderSuccess) onOrderSuccess(createdOrder, grandTotal);
     } catch (err) {
       const fallbackOrder = { id: `ORD-${Math.floor(10000 + Math.random() * 90000)}`, order_code: `ORD-${Math.floor(10000 + Math.random() * 90000)}` };
       setOrderData(fallbackOrder);
       setIsConfirmed(true);
-      if (onOrderSuccess) onOrderSuccess(fallbackOrder, amountToDeduct);
+      if (onOrderSuccess) onOrderSuccess(fallbackOrder, grandTotal);
     } finally {
       setIsSubmitting(false);
     }
@@ -322,7 +307,6 @@ export default function CheckoutModal({
             <div className="space-y-3 bg-blue-50/60 border border-blue-200 rounded-2xl p-4">
               <h4 className="text-xs font-bold text-blue-900 uppercase tracking-wider block">📦 Delivery Location & Zone</h4>
               
-              {/* Address Toggle */}
               <div className="flex gap-2">
                 <button
                   type="button"
@@ -362,7 +346,6 @@ export default function CheckoutModal({
                 </div>
               )}
 
-              {/* Zone Selector for Pricing Calculations */}
               <div className="grid grid-cols-3 gap-2 text-xs pt-2">
                 <button 
                   type="button" 
@@ -392,7 +375,6 @@ export default function CheckoutModal({
                 </button>
               </div>
 
-              {/* Input field for non-shuttle Kwara area */}
               {selectedZone === 'custom_kwara' && (
                 <div className="mt-2 space-y-1.5">
                   <input
@@ -409,7 +391,6 @@ export default function CheckoutModal({
                 </div>
               )}
 
-              {/* Shuttle Pool Option (Disabled for non-shuttle custom Kwara zones) */}
               <div className="pt-2 border-t border-blue-200/60">
                 <label className={`flex items-center gap-2 ${selectedZone === 'custom_kwara' ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}>
                   <input 
@@ -441,20 +422,6 @@ export default function CheckoutModal({
                     </p>
                   </div>
                 )}
-              </div>
-            </div>
-
-            <div className="bg-emerald-50/60 border border-emerald-200 rounded-2xl p-4 space-y-3">
-              <label className="text-xs font-bold text-emerald-900 uppercase tracking-wider block">💳 Select Payment Option</label>
-              <div className="grid grid-cols-2 gap-3 text-xs">
-                <button type="button" onClick={() => setPaymentMode('full')} className={`p-3 rounded-2xl border text-left cursor-pointer ${paymentMode === 'full' ? 'bg-emerald-600 text-white border-emerald-700' : 'bg-white text-slate-700'}`}>
-                  <span className="block font-bold">💳 Pay in Full</span>
-                  <span className="text-sm font-extrabold mt-1 block">₦{grandTotal.toLocaleString()}</span>
-                </button>
-                <button type="button" onClick={() => setPaymentMode('pay_small_small')} className={`p-3 rounded-2xl border text-left cursor-pointer ${paymentMode === 'pay_small_small' ? 'bg-emerald-600 text-white border-emerald-700' : 'bg-white text-slate-700'}`}>
-                  <span className="block font-bold">🐣 Pay Small-Small</span>
-                  <span className="text-sm font-extrabold mt-1 block">Deposit ₦{minDepositRequired.toLocaleString()}</span>
-                </button>
               </div>
             </div>
 

@@ -306,26 +306,45 @@ function App() {
               </div>
             </section>
 
-            <section className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto">
-              <div onClick={() => setActiveTab('marketplace')} className="bg-white p-6 rounded-3xl shadow-sm hover:shadow-md transition-all flex flex-col items-center justify-center text-center aspect-square cursor-pointer border border-slate-100 hover:border-emerald-200">
-                <span className="text-5xl mb-4">🛒</span>
-                <span className="font-bold text-slate-800 text-sm">Local Markets</span>
+            <section className="grid grid-cols-2 md:grid-cols-3 gap-4 max-w-5xl mx-auto">
+              
+              {/* 1. Local Markets */}
+              <div onClick={() => setActiveTab('marketplace')} className="bg-white p-5 rounded-3xl shadow-sm hover:shadow-md transition-all flex flex-col items-center justify-center text-center cursor-pointer border border-slate-100 hover:border-emerald-200">
+                <span className="text-5xl mb-3">🛒</span>
+                <span className="font-bold text-slate-800 text-sm mb-1">Local Markets</span>
+                <span className="text-[10px] text-slate-500 font-medium">Mandate, Ipata, Oja Oba, Oja Tuntun, Kulende</span>
               </div>
               
-              <div onClick={() => setActiveTab('marketplace')} className="bg-white p-6 rounded-3xl shadow-sm hover:shadow-md transition-all flex flex-col items-center justify-center text-center aspect-square cursor-pointer border border-slate-100 hover:border-emerald-200">
-                <span className="text-5xl mb-4">🛍️</span>
-                <span className="font-bold text-slate-800 text-sm">Supermarkets</span>
+              {/* 2. Supermarkets */}
+              <div onClick={() => setActiveTab('marketplace')} className="bg-white p-5 rounded-3xl shadow-sm hover:shadow-md transition-all flex flex-col items-center justify-center text-center cursor-pointer border border-slate-100 hover:border-emerald-200">
+                <span className="text-5xl mb-3">🛍️</span>
+                <span className="font-bold text-slate-800 text-sm mb-1">Supermarkets</span>
+                <span className="text-[10px] text-slate-500 font-medium">Shoprite, Emirate Mall, Shopmall</span>
               </div>
 
-              <div onClick={() => setActiveTab('pooling')} className="bg-white p-6 rounded-3xl shadow-sm hover:shadow-md transition-all flex flex-col items-center justify-center text-center aspect-square cursor-pointer border border-slate-100 hover:border-emerald-200">
-                <span className="text-5xl mb-4">🍲</span>
-                <span className="font-bold text-slate-800 text-sm">Food Pooling</span>
+              {/* 3. Restaurants (NEW) */}
+              <div onClick={() => setActiveTab('marketplace')} className="bg-white p-5 rounded-3xl shadow-sm hover:shadow-md transition-all flex flex-col items-center justify-center text-center cursor-pointer border border-slate-100 hover:border-emerald-200">
+                <span className="text-5xl mb-3">🍽️</span>
+                <span className="font-bold text-slate-800 text-sm mb-1">Restaurants</span>
+                <span className="text-[10px] text-slate-500 font-medium">Local Bukas, Fast Food & Eateries</span>
               </div>
 
-              <div onClick={() => setActiveTab('orders')} className="bg-emerald-50 p-6 rounded-3xl border-2 border-emerald-200 shadow-sm hover:shadow-md transition-all flex flex-col items-center justify-center text-center aspect-square cursor-pointer hover:bg-emerald-100">
-                <span className="text-5xl mb-4">✨</span>
-                <span className="font-extrabold text-emerald-800 text-sm">Custom AI Errand</span>
+              {/* 4. Food Pooling */}
+              <div onClick={() => setActiveTab('pooling')} className="bg-white p-5 rounded-3xl shadow-sm hover:shadow-md transition-all flex flex-col items-center justify-center text-center cursor-pointer border border-slate-100 hover:border-emerald-200">
+                <span className="text-5xl mb-3">🍲</span>
+                <span className="font-bold text-slate-800 text-sm mb-1">Food Pooling</span>
+                <span className="text-[10px] text-slate-500 font-medium">Share bulk items with neighbors</span>
               </div>
+
+              {/* 5. Custom AI Errand (Takes up 2 columns for emphasis) */}
+              <div onClick={() => setActiveTab('orders')} className="col-span-2 md:col-span-2 bg-emerald-50 p-5 rounded-3xl border-2 border-emerald-200 shadow-sm hover:shadow-md transition-all flex flex-col items-center justify-center text-center cursor-pointer hover:bg-emerald-100">
+                <span className="text-5xl mb-3">✨</span>
+                <span className="font-extrabold text-emerald-800 text-sm mb-1">Custom AI Errand</span>
+                <span className="text-[10px] text-emerald-600 font-medium max-w-xs">
+                  Type your custom grocery list, pharmacy run, or special errand and we'll handle it!
+                </span>
+              </div>
+
             </section>
           </div>
         ) : (

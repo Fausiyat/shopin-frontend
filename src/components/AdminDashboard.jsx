@@ -4,7 +4,15 @@ import shopinApi from '../services/api';
 import UserTracker from './UserTracker';
 
 function AdminProductsManager({ API_URL, adminPin }) {
-  const [items, setItems] = useState([]);
+  const getSampleAdminProducts = () => [
+    { id: 'v-prod-6', product_name: 'Item 7 Chicken & Chips', category: 'Restaurants', price_ngn: 2500, location: 'Tanke Hub' },
+    { id: 'v-prod-7', product_name: 'Aroma Amala & Ewedu', category: 'Restaurants', price_ngn: 1800, location: 'Challenge Hub' },
+    { id: 'v-prod-8', product_name: 'Shoprite Fresh Bread', category: 'Supermarkets', price_ngn: 1200, location: 'Fate Hub' },
+    { id: 'v-prod-9', product_name: 'Garri Ijebu (Paint Rubber)', category: 'Local Markets', price_ngn: 2800, location: 'Mandate Market' }
+  ];
+
+  // Initialize state directly with items so they show up immediately!
+  const [items, setItems] = useState(getSampleAdminProducts());
   const [editingItem, setEditingItem] = useState(null);
   const [newName, setNewName] = useState('');
   const [newPrice, setNewPrice] = useState('');

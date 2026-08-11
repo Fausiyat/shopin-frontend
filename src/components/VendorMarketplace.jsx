@@ -20,28 +20,28 @@ const getSampleProducts = () => [
   // 🌟 GENERIC MEAL SAMPLES
   {
     id: 'v-prod-6', product_name: 'Jollof Rice & Chicken', category: 'Restaurants',
-    price_ngn: 2500, stock_quantity: 50, image_url: 'https://via.placeholder.com/150?text=Jollof+Rice', is_verified: true, vendor_id: 'VND-ILR-REST',
+    price_ngn: 2500, stock_quantity: 50, image_url: 'images/jollof.JPG', is_verified: true, vendor_id: 'VND-ILR-REST',
     vendor_name: 'Multiple Restaurants', location: 'Ilorin City', contact_mode: 'MIDDLEMAN', is_pickup_available: true
   },
   {
     id: 'v-prod-7', product_name: 'Amala, Ewedu & Assorted Meat', category: 'Restaurants',
-    price_ngn: 2000, stock_quantity: 100, image_url: 'https://via.placeholder.com/150?text=Amala', is_verified: true, vendor_id: 'VND-ILR-REST',
+    price_ngn: 2000, stock_quantity: 100, image_url: 'images/amawedu.JPG', is_verified: true, vendor_id: 'VND-ILR-REST',
     vendor_name: 'Multiple Restaurants', location: 'Ilorin City', contact_mode: 'MIDDLEMAN', is_pickup_available: true
   },
   {
     id: 'v-prod-10', product_name: 'Meatpie / Chickenpie', category: 'Restaurants',
-    price_ngn: 800, stock_quantity: 100, image_url: 'https://via.placeholder.com/150?text=Meatpie', is_verified: true, vendor_id: 'VND-ILR-REST',
+    price_ngn: 800, stock_quantity: 100, image_url: 'images/mepie.JPG', is_verified: true, vendor_id: 'VND-ILR-REST',
     vendor_name: 'Multiple Restaurants', location: 'Ilorin City', contact_mode: 'MIDDLEMAN', is_pickup_available: true
   },
   
   {
     id: 'v-prod-8', product_name: 'Shoprite Fresh Bread', category: 'Supermarkets',
-    price_ngn: 1200, stock_quantity: 20, image_url: 'https://via.placeholder.com/150?text=Shoprite+Bread', is_verified: true, vendor_id: 'VND-ILR-MALL',
+    price_ngn: 1200, stock_quantity: 20, image_url: 'images/bread.JPG', is_verified: true, vendor_id: 'VND-ILR-MALL',
     vendor_name: 'Shoprite Kwara Mall', location: 'Fate Hub', contact_mode: 'MIDDLEMAN', is_pickup_available: true
   },
   {
     id: 'v-prod-9', product_name: 'Garri Ijebu (Paint Rubber)', category: 'Local Markets',
-    price_ngn: 2800, stock_quantity: 500, image_url: 'https://via.placeholder.com/150?text=Garri', is_verified: true, vendor_id: 'VND-ILR-MANDATE',
+    price_ngn: 2800, stock_quantity: 500, image_url: 'images/garripaint.JPG', is_verified: true, vendor_id: 'VND-ILR-MANDATE',
     vendor_name: 'Iya Elelubo', location: 'Mandate Market', contact_mode: 'MIDDLEMAN', is_pickup_available: true
   }
 ];

@@ -366,15 +366,10 @@ export default function VendorMarketplace({ marketFilter, onAddToCart, openCheck
                           <span className="text-lg font-extrabold text-emerald-700">₦{Number(prod.price_ngn).toLocaleString()}</span>
                         </div>
                       </div>
-                      <div className="grid grid-cols-2 gap-2 pt-1">
-                        <button onClick={() => handleBuyWithEscrow(prod, false)} className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] py-2 rounded-xl text-center cursor-pointer">
+                      <div className="pt-1">
+                        <button onClick={() => handleBuyWithEscrow(prod, false)} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[12px] py-2.5 rounded-xl text-center cursor-pointer shadow-sm">
                           🚚 Add to Cart
                         </button>
-                        {prod.is_pickup_available && (
-                          <button onClick={() => handleBuyWithEscrow(prod, true)} className="bg-slate-800 hover:bg-slate-900 text-white font-bold text-[11px] py-2 rounded-xl text-center cursor-pointer">
-                            🏪 Pickup (₦0 Del.)
-                          </button>
-                        )}
                       </div>
                     </div>
                   )}

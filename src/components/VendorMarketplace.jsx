@@ -2,33 +2,38 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import shopinApi from '../services/api';
 
-// 🌟 MOVED OUTSIDE: This ensures the samples are ready the exact millisecond the app loads!
+// 🌟 NEW: Define all your Service categories in one place!
+const SERVICE_CATEGORIES = [
+  'AB&S Services', 
+  'Mini-Services', 
+  'Artisans & Repairs', 
+  'Beauty & Salons', 
+  'Home Tutors', 
+  'Event Planning'
+];
+
 const getSampleProducts = () => [
   {
     id: 'v-prod-1', product_name: 'AB&S Move-In / Move-Out Deep Cleaning', category: 'AB&S Services',
     price_ngn: null, stock_quantity: 1, is_verified: true, vendor_id: 'SHP-ILR-8812',
     vendor_name: 'AB&S Cleaning Services', phone_number: '08059876543', location: 'Ilorin Central Hub',
-    contact_mode: 'DIRECT', is_pickup_available: false
+    contact_mode: 'DIRECT', is_pickup_available: false, service_type: 'service'
   },
   {
     id: 'v-prod-2', product_name: 'Pepper Blending & Food Processing', category: 'Mini-Services',
     price_ngn: null, stock_quantity: 1, is_verified: true, vendor_id: 'SHP-ILR-3044',
     vendor_name: 'Mama Alhaja Pepper Grinding', phone_number: '08031234567', location: 'Mandate Market',
-    contact_mode: 'DIRECT', is_pickup_available: true
+    contact_mode: 'DIRECT', is_pickup_available: true, service_type: 'service'
+  },
+  {
+    id: 'v-prod-3', product_name: 'Plumbing & Pipe Fixing', category: 'Artisans & Repairs',
+    price_ngn: 5000, stock_quantity: 1, is_verified: true, vendor_id: 'SHP-ILR-9921',
+    vendor_name: 'Baba Wale Plumber', phone_number: '08123456789', location: 'Tanke Hub',
+    contact_mode: 'DIRECT', is_pickup_available: false, service_type: 'service'
   },
   {
     id: 'v-prod-6', product_name: 'Jollof Rice & Chicken', category: 'Restaurants',
     price_ngn: 2500, stock_quantity: 50, image_url: 'images/jollof.JPG', is_verified: true, vendor_id: 'VND-ILR-REST',
-    vendor_name: 'Multiple Restaurants', location: 'Ilorin City', contact_mode: 'MIDDLEMAN', is_pickup_available: true
-  },
-  {
-    id: 'v-prod-7', product_name: 'Amala, Ewedu & Assorted Meat', category: 'Restaurants',
-    price_ngn: 2000, stock_quantity: 100, image_url: 'images/amawedu.JPG', is_verified: true, vendor_id: 'VND-ILR-REST',
-    vendor_name: 'Multiple Restaurants', location: 'Ilorin City', contact_mode: 'MIDDLEMAN', is_pickup_available: true
-  },
-  {
-    id: 'v-prod-10', product_name: 'Meatpie / Chickenpie', category: 'Restaurants',
-    price_ngn: 800, stock_quantity: 100, image_url: 'images/mepie.JPG', is_verified: true, vendor_id: 'VND-ILR-REST',
     vendor_name: 'Multiple Restaurants', location: 'Ilorin City', contact_mode: 'MIDDLEMAN', is_pickup_available: true
   },
   {
@@ -45,11 +50,9 @@ const getSampleProducts = () => [
 
 export default function VendorMarketplace({ marketFilter, onAddToCart, openCheckout }) {
   
-  // 🌟 FREE UNLOCK STATE & FUNCTION
   const [unlockedPhones, setUnlockedPhones] = useState({});
   
   const handleUnlockContact = (vendorProd) => {
-    // Instantly reveal the number for free!
     setUnlockedPhones(prev => ({ 
       ...prev, 
       [vendorProd.id]: vendorProd.phone_number 
@@ -62,20 +65,17 @@ export default function VendorMarketplace({ marketFilter, onAddToCart, openCheck
   const [products, setProducts] = useState(getSampleProducts());
   const [feedback, setFeedback] = useState(null);
 
-  // Dynamic Locations & Selected Restaurant State
   const [locations, setLocations] = useState({ restaurants: ['Item 7', 'Aroma', 'Food 101', 'Captain Cook', 'K-Bakes'] });
   const [selectedRestaurants, setSelectedRestaurants] = useState({});
 
   const API_URL = import.meta.env.VITE_API_URL || 'https://shopin-kwara-backend.onrender.com';
 
-  // Vendor Registration Form State
   const [regFullName, setRegFullName] = useState('');
   const [regPhone, setRegPhone] = useState('');
   const [regEmail, setRegEmail] = useState('');
   const [regCategory, setRegCategory] = useState('Wearables');
   const [regContactMode, setRegContactMode] = useState('MIDDLEMAN'); 
 
-  // Product / Service Listing Form State
   const [vendorShopinId, setVendorShopinId] = useState('VND-ILR-1001');
   const [productName, setProductName] = useState('');
   const [category, setCategory] = useState('Wearables');
@@ -87,7 +87,6 @@ export default function VendorMarketplace({ marketFilter, onAddToCart, openCheck
   const [isPickupAvailable, setIsPickupAvailable] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Listen for clicks from the Home Screen Bubbles
   useEffect(() => {
     if (marketFilter === 'MARKETS') setSelectedCategory('Local Markets');
     if (marketFilter === 'SUPERMARKETS') setSelectedCategory('Supermarkets');
@@ -95,7 +94,6 @@ export default function VendorMarketplace({ marketFilter, onAddToCart, openCheck
     if (marketFilter === 'ALL') setSelectedCategory('All');
   }, [marketFilter]);
 
-  // Fetch dynamic restaurants from your database
   useEffect(() => {
     const fetchDynamicLocations = async () => {
       try {
@@ -110,7 +108,6 @@ export default function VendorMarketplace({ marketFilter, onAddToCart, openCheck
     fetchDynamicLocations();
   }, [API_URL]);
 
-  // Fetch REAL Marketplace Catalog on Load
   useEffect(() => {
     const fetchCatalog = async () => {
       try {
@@ -151,11 +148,13 @@ export default function VendorMarketplace({ marketFilter, onAddToCart, openCheck
 
   const handleListProduct = async (e) => {
     e.preventDefault();
-    const isServiceCategory = category === 'AB&S Services' || category === 'Mini-Services';
     if (!productName) return;
 
     setIsSubmitting(true);
     setFeedback(null);
+
+    // 🌟 SMART CHECK: If the selected category is in our Service list, treat it as a service!
+    const isServiceCategory = SERVICE_CATEGORIES.includes(category);
 
     const payload = {
       shopin_id: vendorShopinId.trim(), product_name: productName.trim(), category: category,
@@ -184,12 +183,10 @@ export default function VendorMarketplace({ marketFilter, onAddToCart, openCheck
   };
 
   const handleBuyWithEscrow = (prod, isPickup = false) => {
-    // 🌟 Check if the user selected a specific restaurant from the dropdown
     const chosenRestaurant = prod.category === 'Restaurants' 
       ? (selectedRestaurants[prod.id] || locations.restaurants[0] || 'Selected Restaurant')
       : prod.vendor_name;
       
-    // Change the name to "Jollof Rice (from Item 7)"
     const finalName = prod.category === 'Restaurants' 
       ? `${prod.product_name} (from ${chosenRestaurant})` 
       : prod.product_name;
@@ -212,7 +209,8 @@ export default function VendorMarketplace({ marketFilter, onAddToCart, openCheck
     if (openCheckout) openCheckout();
   };
 
-  const filterTabs = ['All', 'Local Markets', 'Supermarkets', 'Restaurants', 'Foodstuff', 'Wearables', 'Electronics', 'AB&S Services', 'Mini-Services', 'Provisions'];
+  // 🌟 DYNAMIC FILTER TABS: Combines shopping categories with our new Service categories
+  const filterTabs = ['All', 'Local Markets', 'Supermarkets', 'Restaurants', 'Foodstuff', 'Wearables', 'Electronics', ...SERVICE_CATEGORIES, 'Provisions'];
 
   const filteredProducts = products.filter(prod => {
     const matchesCategory = selectedCategory === 'All' || prod.category === selectedCategory;
@@ -252,7 +250,7 @@ export default function VendorMarketplace({ marketFilter, onAddToCart, openCheck
       {activeSubTab === 'browse' && (
         <div className="space-y-4">
           <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
-            <input type="text" placeholder="Search markets, restaurants, amala..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full sm:w-64 p-2.5 border border-slate-300 rounded-xl text-xs outline-none focus:ring-2 focus:ring-teal-500 bg-white" />
+            <input type="text" placeholder="Search markets, restaurants, artisans..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full sm:w-64 p-2.5 border border-slate-300 rounded-xl text-xs outline-none focus:ring-2 focus:ring-teal-500 bg-white" />
 
             <div className="flex gap-1.5 overflow-x-auto w-full sm:w-auto text-xs pb-1 custom-scrollbar">
               {filterTabs.map((cat) => (
@@ -278,11 +276,12 @@ export default function VendorMarketplace({ marketFilter, onAddToCart, openCheck
                       <span className={`text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded ${
                         prod.category === 'Restaurants' ? 'bg-amber-100 text-amber-800' :
                         prod.category === 'Supermarkets' ? 'bg-blue-100 text-blue-800' :
+                        SERVICE_CATEGORIES.includes(prod.category) ? 'bg-purple-100 text-purple-800' :
                         'bg-slate-100 text-slate-700'
                       }`}>
                         {prod.category}
                       </span>
-                      {prod.contact_mode === 'DIRECT' ? (
+                      {prod.contact_mode === 'DIRECT' || SERVICE_CATEGORIES.includes(prod.category) ? (
                         <span className="text-[10px] font-bold px-2 py-0.5 bg-purple-100 text-purple-800 rounded-full flex items-center gap-1">📞 Direct Phone</span>
                       ) : (
                         <span className="text-[10px] font-bold px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-full flex items-center gap-1">🛡️ Escrow (₦200)</span>
@@ -291,7 +290,6 @@ export default function VendorMarketplace({ marketFilter, onAddToCart, openCheck
 
                     <h3 className="font-bold text-slate-900 text-base leading-snug">{prod.product_name}</h3>
                     
-                    {/* 🌟 RESTAURANT DROPDOWN SELECTOR */}
                     {prod.category === 'Restaurants' ? (
                       <div className="mt-2 mb-1">
                         <label className="text-[10px] font-bold text-slate-500 uppercase">Select Restaurant:</label>
@@ -311,8 +309,8 @@ export default function VendorMarketplace({ marketFilter, onAddToCart, openCheck
                     )}
                   </div>
 
-                  {/* 🌟 THIS IS THE CLEANED UP SERVICES SECTION */}
-                  {prod.category === 'AB&S Services' || prod.category === 'Mini-Services' || prod.contact_mode === 'DIRECT' ? (
+                  {/* 🌟 SMART BUTTON RENDERER: If it's in our Service Categories list, show the purple button! */}
+                  {SERVICE_CATEGORIES.includes(prod.category) || prod.contact_mode === 'DIRECT' || prod.service_type === 'service' ? (
                     <div className="pt-3 border-t border-slate-100 space-y-2">
                       <div className="text-xs text-slate-600">
                         Price: <span className="font-bold text-purple-900">
@@ -384,7 +382,8 @@ export default function VendorMarketplace({ marketFilter, onAddToCart, openCheck
               <option value="Local Markets">Local Markets</option>
               <option value="Wearables">Wearables</option>
               <option value="Electronics">Electronics</option>
-              <option value="Mini-Services">Mini-Services</option>
+              {/* 🌟 Automatically populate dropdown with all our Service Categories! */}
+              {SERVICE_CATEGORIES.map(cat => <option key={cat} value={cat}>{cat}</option>)}
             </select>
           </div>
           <button type="submit" disabled={isSubmitting} className="w-full bg-teal-700 text-white font-bold py-3.5 rounded-xl text-xs">Register as Vendor ➔</button>
@@ -405,16 +404,16 @@ export default function VendorMarketplace({ marketFilter, onAddToCart, openCheck
                 <option value="Local Markets">Local Market Goods</option>
                 <option value="Wearables">Wearables</option>
                 <option value="Electronics">Electronics</option>
-                <option value="AB&S Services">AB&S Services</option>
-                <option value="Mini-Services">Mini-Services</option>
+                {/* 🌟 Automatically populate dropdown with all our Service Categories! */}
+                {SERVICE_CATEGORIES.map(cat => <option key={cat} value={cat}>{cat}</option>)}
               </select>
             </div>
           </div>
-          <div><label className="text-xs font-semibold text-slate-600 block mb-1">Item Name</label><input type="text" value={productName} onChange={(e) => setProductName(e.target.value)} required className="w-full p-2.5 border rounded-xl text-xs" /></div>
+          <div><label className="text-xs font-semibold text-slate-600 block mb-1">Item / Service Name</label><input type="text" value={productName} onChange={(e) => setProductName(e.target.value)} required className="w-full p-2.5 border rounded-xl text-xs" /></div>
           <div><label className="text-xs font-semibold text-slate-600 block mb-1">Image URL (Optional)</label><input type="url" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} className="w-full p-2.5 border rounded-xl text-xs" /></div>
           <div className="grid grid-cols-2 gap-3">
-            <div><label className="text-xs font-semibold text-slate-600 block mb-1">Price (₦ NGN)</label><input type="number" value={priceNgn} onChange={(e) => setPriceNgn(e.target.value)} className="w-full p-2.5 border rounded-xl text-xs" /></div>
-            <div><label className="text-xs font-semibold text-slate-600 block mb-1">Location Hub</label><input type="text" value={locationHub} onChange={(e) => setLocationHub(e.target.value)} className="w-full p-2.5 border rounded-xl text-xs" /></div>
+            <div><label className="text-xs font-semibold text-slate-600 block mb-1">Price (₦ NGN)</label><input type="number" value={priceNgn} onChange={(e) => setPriceNgn(e.target.value)} placeholder="Blank = Negotiable" className="w-full p-2.5 border rounded-xl text-xs" /></div>
+            <div><label className="text-xs font-semibold text-slate-600 block mb-1">Location / Market Hub</label><input type="text" value={locationHub} onChange={(e) => setLocationHub(e.target.value)} className="w-full p-2.5 border rounded-xl text-xs" /></div>
           </div>
           <button type="submit" disabled={isSubmitting} className="w-full bg-teal-700 text-white font-bold py-3.5 rounded-xl text-xs">Publish Listing 🔒</button>
         </form>

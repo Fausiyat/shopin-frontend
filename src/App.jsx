@@ -14,8 +14,9 @@ import shopinApi from './services/api';
 
 function App() {
   const [activeTab, setActiveTab] = useState('home'); 
+  const [searchTerm, setSearchTerm] = useState('');
   
-  // 🌟 NEW: This state remembers WHICH bubble you clicked so the marketplace can filter it![cite: 4]
+  // 🌟 NEW: This state remembers WHICH bubble you clicked so the marketplace can filter it!
   const [marketFilter, setMarketFilter] = useState('ALL');
 
   const [cartItems, setCartItems] = useState([]);
@@ -133,7 +134,7 @@ function App() {
     }, 0);
   };
 
-  // 🌟 HELPER TO HANDLE BUBBLE CLICKS[cite: 4]
+  // 🌟 HELPER TO HANDLE BUBBLE CLICKS
   const openMarketplaceWithFilter = (filterType) => {
     setMarketFilter(filterType);
     setActiveTab('marketplace');
@@ -166,8 +167,6 @@ function App() {
           </div>
 
           <div className="flex items-center gap-2">
-            
-            {/* 🌟 NEW: MINI WALLET BALANCE INDICATOR */}
             <button 
               onClick={() => setActiveTab('wallet')} 
               className="bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-900 font-extrabold px-3 py-1.5 rounded-xl text-xs flex items-center gap-1 transition-colors cursor-pointer shadow-sm"
@@ -184,7 +183,6 @@ function App() {
               <span>🛒 <span className="hidden sm:inline">Cart</span></span>
               <span className="bg-white text-emerald-800 rounded-full px-1.5 py-0.2 text-[10px] font-black">{getCartCount()}</span>
             </button>
-            
           </div>
         </div>
 
@@ -202,14 +200,30 @@ function App() {
 
       <main className="max-w-6xl mx-auto px-4 py-8">
         
-        {/* 🌟 GLOVO-STYLE HOME TAB WITH NEW LAYOUT[cite: 4] */}
         {activeTab === 'home' ? (
           <div className="w-full space-y-6">
             <section className="bg-emerald-800 text-white p-8 md:p-12 text-center rounded-3xl shadow-md">
               <h1 className="text-3xl md:text-4xl font-extrabold mb-6 tracking-tight">What do you need today?</h1>
-              <div className="max-w-2xl mx-auto bg-white rounded-full flex items-center overflow-hidden px-4 py-3 shadow-lg">
+              
+              {/* 🌟 UPGRADED LIVE SEARCH BAR */}
+              <div className="max-w-2xl mx-auto bg-white rounded-full flex items-center overflow-hidden pl-4 pr-1.5 py-1.5 shadow-lg border-2 border-transparent focus-within:border-emerald-400 transition-all">
                 <span className="text-slate-400 text-xl mr-2">🔍</span>
-                <input type="text" placeholder="Search for yams, item 7, or a market..." className="w-full p-2 text-slate-800 focus:outline-none font-medium" />
+                <input 
+                  type="text" 
+                  placeholder="Search for yams, item 7, or a market..." 
+                  className="w-full p-2 text-slate-800 focus:outline-none font-medium bg-transparent" 
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') setActiveTab('marketplace');
+                  }}
+                />
+                <button 
+                  onClick={() => setActiveTab('marketplace')}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-5 rounded-full text-sm transition cursor-pointer shadow-sm hidden sm:block"
+                >
+                  Search
+                </button>
               </div>
             </section>
 
@@ -225,7 +239,7 @@ function App() {
               <div className="flex items-center gap-2 w-full sm:w-auto">
                 <a 
                   href="tel:08143086509" 
-                  className="flex-1 sm:flex-initial bg-amber-600 hover:bg-amber-700 text-white font-bold px-4 py-2.5 rounded-xl text-center transition cursor-pointer shadow-xs whitespace-nowrap"
+                  className="flex-1 sm:flex-initial bg-amber-600 hover:bg-amber-700 text-white font-bold px-4 py-2.5 rounded-xl text-center transition cursor-pointer shadow-xs whitespace-nowrap active:scale-95"
                 >
                   📞 Call Admin
                 </a>
@@ -233,48 +247,44 @@ function App() {
                   href="https://wa.me/2348143086509?text=Hello%20ShopIn%20Admin,%20I%20need%20help%20with%20an%20issue:" 
                   target="_blank" 
                   rel="noopener noreferrer"
-                  className="flex-1 sm:flex-initial bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2.5 rounded-xl text-center transition cursor-pointer shadow-xs whitespace-nowrap"
+                  className="flex-1 sm:flex-initial bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2.5 rounded-xl text-center transition cursor-pointer shadow-xs whitespace-nowrap active:scale-95"
                 >
                   💬 WhatsApp Chat
                 </a>
               </div>
             </div>
 
-            <section className="grid grid-cols-2 md:grid-cols-3 gap-4 max-w-5xl mx-auto">
+            {/* 🌟 MOBILE-OPTIMIZED GRID */}
+            <section className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 max-w-5xl mx-auto">
               
-              {/* 1. Local Markets */}
-              <div onClick={() => openMarketplaceWithFilter('MARKETS')} className="bg-white p-5 rounded-3xl shadow-sm hover:shadow-md transition-all flex flex-col items-center justify-center text-center cursor-pointer border border-slate-100 hover:border-emerald-200">
-                <span className="text-5xl mb-3">🛒</span>
-                <span className="font-bold text-slate-800 text-sm mb-1">Local Markets</span>
-                <span className="text-[10px] text-slate-500 font-medium leading-tight">Mandate, Ipata, Oja Oba, Oja Tuntun, Kulende</span>
+              <div onClick={() => openMarketplaceWithFilter('MARKETS')} className="bg-white p-4 sm:p-5 rounded-3xl shadow-sm hover:shadow-md transition-all flex flex-col items-center justify-center text-center cursor-pointer border border-slate-100 hover:border-emerald-200 active:scale-95">
+                <span className="text-4xl sm:text-5xl mb-2 sm:mb-3">🛒</span>
+                <span className="font-bold text-slate-800 text-xs sm:text-sm mb-1">Local Markets</span>
+                <span className="text-[9px] sm:text-[10px] text-slate-500 font-medium leading-tight px-1">Mandate, Ipata, Oja Oba, Oja Tuntun</span>
               </div>
               
-              {/* 2. Supermarkets */}
-              <div onClick={() => openMarketplaceWithFilter('SUPERMARKETS')} className="bg-white p-5 rounded-3xl shadow-sm hover:shadow-md transition-all flex flex-col items-center justify-center text-center cursor-pointer border border-slate-100 hover:border-emerald-200">
-                <span className="text-5xl mb-3">🛍️</span>
-                <span className="font-bold text-slate-800 text-sm mb-1">Supermarkets</span>
-                <span className="text-[10px] text-slate-500 font-medium leading-tight">Shoprite, Emirate Mall, Shopmall</span>
+              <div onClick={() => openMarketplaceWithFilter('SUPERMARKETS')} className="bg-white p-4 sm:p-5 rounded-3xl shadow-sm hover:shadow-md transition-all flex flex-col items-center justify-center text-center cursor-pointer border border-slate-100 hover:border-emerald-200 active:scale-95">
+                <span className="text-4xl sm:text-5xl mb-2 sm:mb-3">🛍️</span>
+                <span className="font-bold text-slate-800 text-xs sm:text-sm mb-1">Supermarkets</span>
+                <span className="text-[9px] sm:text-[10px] text-slate-500 font-medium leading-tight px-1">Shoprite, Emirate Mall, Shopmall</span>
               </div>
 
-              {/* 3. Restaurants */}
-              <div onClick={() => openMarketplaceWithFilter('RESTAURANTS')} className="bg-white p-5 rounded-3xl shadow-sm hover:shadow-md transition-all flex flex-col items-center justify-center text-center cursor-pointer border border-slate-100 hover:border-emerald-200">
-                <span className="text-5xl mb-3">🍽️</span>
-                <span className="font-bold text-slate-800 text-sm mb-1">Restaurants</span>
-                <span className="text-[10px] text-slate-500 font-medium leading-tight">Aroma, Captain Cook, Item 7, Sheshede, Food 101</span>
+              <div onClick={() => openMarketplaceWithFilter('RESTAURANTS')} className="bg-white p-4 sm:p-5 rounded-3xl shadow-sm hover:shadow-md transition-all flex flex-col items-center justify-center text-center cursor-pointer border border-slate-100 hover:border-emerald-200 active:scale-95">
+                <span className="text-4xl sm:text-5xl mb-2 sm:mb-3">🍽️</span>
+                <span className="font-bold text-slate-800 text-xs sm:text-sm mb-1">Restaurants</span>
+                <span className="text-[9px] sm:text-[10px] text-slate-500 font-medium leading-tight px-1">Aroma, Captain Cook, Item 7, Sheshede</span>
               </div>
 
-              {/* 4. Food Pooling */}
-              <div onClick={() => setActiveTab('pooling')} className="bg-white p-5 rounded-3xl shadow-sm hover:shadow-md transition-all flex flex-col items-center justify-center text-center cursor-pointer border border-slate-100 hover:border-emerald-200">
-                <span className="text-5xl mb-3">🍲</span>
-                <span className="font-bold text-slate-800 text-sm mb-1">Food Pooling</span>
-                <span className="text-[10px] text-slate-500 font-medium leading-tight">Share bulk bags of rice or garri to save money</span>
+              <div onClick={() => setActiveTab('pooling')} className="bg-white p-4 sm:p-5 rounded-3xl shadow-sm hover:shadow-md transition-all flex flex-col items-center justify-center text-center cursor-pointer border border-slate-100 hover:border-emerald-200 active:scale-95">
+                <span className="text-4xl sm:text-5xl mb-2 sm:mb-3">🍲</span>
+                <span className="font-bold text-slate-800 text-xs sm:text-sm mb-1">Food Pooling</span>
+                <span className="text-[9px] sm:text-[10px] text-slate-500 font-medium leading-tight px-1">Share bulk bags of rice or garri</span>
               </div>
 
-              {/* 5. Custom AI Errand */}
-              <div onClick={() => setActiveTab('orders')} className="col-span-2 md:col-span-2 bg-emerald-50 p-5 rounded-3xl border-2 border-emerald-200 shadow-sm hover:shadow-md transition-all flex flex-col items-center justify-center text-center cursor-pointer hover:bg-emerald-100">
-                <span className="text-5xl mb-3">✨</span>
-                <span className="font-extrabold text-emerald-800 text-sm mb-1">Custom AI Errand</span>
-                <span className="text-[10px] text-emerald-600 font-medium max-w-xs leading-tight">
+              <div onClick={() => setActiveTab('orders')} className="col-span-2 md:col-span-2 bg-emerald-50 p-4 sm:p-5 rounded-3xl border-2 border-emerald-200 shadow-sm hover:shadow-md transition-all flex flex-col items-center justify-center text-center cursor-pointer hover:bg-emerald-100 active:scale-95">
+                <span className="text-4xl sm:text-5xl mb-2 sm:mb-3">✨</span>
+                <span className="font-extrabold text-emerald-800 text-xs sm:text-sm mb-1">Custom AI Errand</span>
+                <span className="text-[9px] sm:text-[10px] text-emerald-600 font-medium max-w-sm leading-tight">
                   Type your custom grocery list, pharmacy run, or special request and we'll handle it!
                 </span>
               </div>
@@ -282,10 +292,10 @@ function App() {
             </section>
           </div>
         ) : (
-          
-          /* ORIGINAL LAYOUT FOR ALL OTHER TABS[cite: 4] */
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-            <section className="lg:col-span-7 bg-white rounded-2xl border border-slate-200 shadow-xs p-6">
+            
+            {/* 🌟 DYNAMIC MAIN SECTION: Full width for Wallet/Admin, 7-columns for others */}
+            <section className={`bg-white rounded-2xl border border-slate-200 shadow-xs p-6 ${activeTab === 'wallet' || activeTab === 'admin' ? 'lg:col-span-12' : 'lg:col-span-7'}`}>
               
               {activeTab === 'wallet' && (
                 <div className="space-y-4">
@@ -304,9 +314,9 @@ function App() {
               )}
 
               {activeTab === 'marketplace' && (
-                // 🌟 Notice we are passing the marketFilter prop here now![cite: 4]
                 <VendorMarketplace 
-                  marketFilter={marketFilter}
+                  marketFilter={marketFilter} 
+                  searchTerm={searchTerm} 
                   onAddToCart={handleAddToCart} 
                   openCheckout={() => setIsCheckoutOpen(true)} 
                 />
@@ -342,27 +352,32 @@ function App() {
               )}
             </section>
 
-            <aside className="lg:col-span-5 space-y-6">
-              {activeOrderId ? (
-                <OrderTracker orderStatus={activeOrderStatus} />
-              ) : (
-                <div className="bg-slate-100 border border-slate-200 rounded-2xl p-4 text-center text-slate-400 text-xs font-medium">
-                  🛒 No active order tracking. Place an order to view live delivery status!
-                </div>
-              )}
+            {/* 🌟 CONDITIONALLY RENDER THE SIDEBAR */}
+            {activeTab !== 'wallet' && activeTab !== 'admin' && (
+              <aside className="lg:col-span-5 space-y-6">
+                
+                {activeOrderId ? (
+                  <OrderTracker orderStatus={activeOrderStatus} activeOrder={null} />
+                ) : (
+                  <div className="bg-slate-100 border border-slate-200 rounded-2xl p-4 text-center text-slate-400 text-xs font-medium">
+                    🛒 No active order tracking. Place an order to view live delivery status!
+                  </div>
+                )}
 
-              <div className="bg-blue-50 rounded-2xl border border-blue-200 p-5 text-blue-900">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-bold uppercase tracking-wider bg-blue-200 text-blue-800 px-2 py-0.5 rounded-full">Batch Shuttle</span>
-                  <span className="text-xs font-semibold text-blue-700">Next Run: 12:00 PM</span>
+                <div className="bg-blue-50 rounded-2xl border border-blue-200 p-5 text-blue-900">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-bold uppercase tracking-wider bg-blue-200 text-blue-800 px-2 py-0.5 rounded-full">Batch Shuttle</span>
+                    <span className="text-xs font-semibold text-blue-700">Next Run: 12:00 PM</span>
+                  </div>
+                  <h4 className="font-bold text-sm">Unilorin / Tanke Shuttle Active</h4>
+                  <p className="text-xs text-blue-700 mt-1 mb-3">Pool delivery fees with nearby orders to lock in shared zone rates!</p>
+                  <button onClick={() => setActiveTab('shuttles')} className="w-full bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold py-2 px-3 rounded-xl transition cursor-pointer">
+                    View Available Corridors ➔
+                  </button>
                 </div>
-                <h4 className="font-bold text-sm">Unilorin / Tanke Shuttle Active</h4>
-                <p className="text-xs text-blue-700 mt-1 mb-3">Pool delivery fees with nearby orders to lock in shared zone rates!</p>
-                <button onClick={() => setActiveTab('shuttles')} className="w-full bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold py-2 px-3 rounded-xl transition cursor-pointer">
-                  View Available Corridors ➔
-                </button>
-              </div>
-            </aside>
+              </aside>
+            )}
+
           </div>
         )}
       </main>

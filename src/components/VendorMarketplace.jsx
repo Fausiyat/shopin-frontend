@@ -48,7 +48,7 @@ const getSampleProducts = () => [
   }
 ];
 
-export default function VendorMarketplace({ marketFilter, onAddToCart, openCheckout }) {
+export default function VendorMarketplace({ marketFilter, searchTerm, onAddToCart, openCheckout }) {
   
   const [unlockedPhones, setUnlockedPhones] = useState({});
   
@@ -212,16 +212,21 @@ export default function VendorMarketplace({ marketFilter, onAddToCart, openCheck
   // 🌟 DYNAMIC FILTER TABS: Combines shopping categories with our new Service categories
   const filterTabs = ['All', 'Local Markets', 'Supermarkets', 'Restaurants', 'Foodstuff', 'Wearables', 'Electronics', ...SERVICE_CATEGORIES, 'Provisions'];
 
-  const filteredProducts = products.filter(prod => {
+ const filteredProducts = products.filter(prod => {
     // 🌟 Normalizes both strings (lowercases them and removes spaces/hyphens) so they always match
     const normalize = (str) => (str || '').replace(/[\s-]/g, '').toLowerCase();
     
     const matchesCategory = selectedCategory === 'All' || 
       normalize(prod.category) === normalize(selectedCategory);
 
-    const matchesSearch = prod.product_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          prod.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          (prod.location && prod.location.toLowerCase().includes(searchQuery.toLowerCase()));
+    // 🌟 UPGRADE: Use the Home Search (searchTerm) OR the Marketplace Search (searchQuery)
+    const activeSearch = searchQuery || searchTerm || '';
+    
+    const matchesSearch = activeSearch === '' ||
+                          prod.product_name.toLowerCase().includes(activeSearch.toLowerCase()) ||
+                          prod.category.toLowerCase().includes(activeSearch.toLowerCase()) ||
+                          (prod.vendor_name && prod.vendor_name.toLowerCase().includes(activeSearch.toLowerCase())) ||
+                          (prod.location && prod.location.toLowerCase().includes(activeSearch.toLowerCase()));
                           
     return matchesCategory && matchesSearch;
   });

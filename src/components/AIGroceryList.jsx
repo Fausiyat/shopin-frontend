@@ -113,7 +113,7 @@ export default function AIGroceryList({ onAddToCart, openCheckout }) {
       console.error("Parsing Error:", err);
       
       if (!err.response || err.message === 'Network Error') {
-        setError("🚨 Whoops! Our Kwara Market servers are currently offline or restarting. Please check your internet or call our emergency support line at 0800-SHOPIN-KW.");
+        setError("🚨 Whoops! Our Kwara Market servers are currently offline or restarting. Please check your internet or call our emergency support line at 081-4308-6509.");
       } else {
         setError("Could not understand that list. Please check your spelling and try again.");
       }

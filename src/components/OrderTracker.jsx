@@ -1,6 +1,13 @@
-import React from 'react';
+import React, { useState } from 'react';
+import axios from 'axios';
 
-export default function OrderTracker({ orderStatus = 'PENDING_CONFIRMATION' }) {
+export default function OrderTracker({ orderStatus = 'PENDING_CONFIRMATION', activeOrder }) {
+  // 🌟 NEW: State to manage the star rating system
+  const [rating, setRating] = useState(0);
+  const [hoveredStar, setHoveredStar] = useState(0);
+  const [reviewSubmitted, setReviewSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   // 1. We map out the exact order of the race
   const orderHierarchy = [
     'PENDING_CONFIRMATION',  // Checkpoint 1: Order Placed
@@ -60,6 +67,66 @@ export default function OrderTracker({ orderStatus = 'PENDING_CONFIRMATION' }) {
           );
         })}
       </div>
+
+      {/* 🌟 LEAVE A REVIEW SECTION (Only visible when order is complete) */}
+      {(orderStatus === 'DELIVERED' || orderStatus === 'COMPLETED') && !reviewSubmitted && (
+        <div className="mt-6 bg-emerald-50 border border-emerald-200 rounded-2xl p-5 shadow-sm text-center">
+          <h4 className="font-extrabold text-emerald-900 text-sm mb-1">Rate your experience!</h4>
+          <p className="text-xs text-emerald-700 mb-4">How was the service or product you received?</p>
+          
+          <div className="flex justify-center gap-2 mb-4">
+            {[1, 2, 3, 4, 5].map((star) => (
+              <button 
+                key={star}
+                type="button"
+                onMouseEnter={() => setHoveredStar(star)}
+                onMouseLeave={() => setHoveredStar(0)}
+                onClick={() => setRating(star)}
+                className="text-4xl transition-transform hover:scale-110 cursor-pointer outline-none"
+              >
+                <span className={star <= (hoveredStar || rating) ? "text-amber-500 drop-shadow-sm" : "text-slate-300 grayscale opacity-50"}>
+                  ⭐
+                </span>
+              </button>
+            ))}
+          </div>
+
+          <button 
+            disabled={rating === 0 || isSubmitting}
+            onClick={async () => {
+              setIsSubmitting(true);
+              try {
+                // We fallback to 'v-prod-1' just to prevent a crash if the activeOrder isn't fully loaded yet
+                const productId = activeOrder?.parsed_json?.product_id || 'v-prod-1';
+                
+                await axios.post(`${import.meta.env.VITE_API_URL || 'https://shopin-kwara-backend.onrender.com'}/api/vendors/reviews`, {
+                  product_id: productId, 
+                  rating: rating
+                });
+                
+                setReviewSubmitted(true);
+              } catch (err) {
+                alert("Failed to submit review. Try again.");
+              } finally {
+                setIsSubmitting(false);
+              }
+            }}
+            className="w-full max-w-xs mx-auto bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white font-bold py-3 rounded-xl shadow-md transition cursor-pointer"
+          >
+            {isSubmitting ? 'Submitting...' : 'Submit Review'}
+          </button>
+        </div>
+      )}
+
+      {/* 🎉 SUCCESS MESSAGE */}
+      {reviewSubmitted && (
+        <div className="mt-6 bg-amber-50 border border-amber-200 rounded-2xl p-5 shadow-sm text-center">
+          <span className="text-3xl block mb-2">🎉</span>
+          <h4 className="font-extrabold text-amber-900 text-sm">Review Submitted!</h4>
+          <p className="text-xs text-amber-700 mt-1">Thank you for keeping the ShopIn community safe and reliable.</p>
+        </div>
+      )}
+
     </div>
   );
 }

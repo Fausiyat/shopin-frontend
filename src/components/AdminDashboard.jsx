@@ -177,6 +177,72 @@ function AdminProductsManager({ API_URL, adminPin }) {
   );
 }
 
+function PendingVendorsManager({ API_URL, adminPin }) {
+  const [pendingVendors, setPendingVendors] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchPendingVendors();
+  }, []);
+
+  const fetchPendingVendors = async () => {
+    try {
+      const res = await axios.get(`${API_URL}/api/admin/pending-vendors`, {
+        headers: { 'x-admin-pin': adminPin }
+      });
+      if (res.data && res.data.pending_vendors) {
+        setPendingVendors(res.data.pending_vendors);
+      }
+    } catch (err) {
+      console.warn("Error fetching pending vendors:", err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleApprove = async (id, name) => {
+    try {
+      await axios.put(`${API_URL}/api/admin/vendors/${id}/verify`, {}, {
+        headers: { 'x-admin-pin': adminPin }
+      });
+      alert(`✅ ${name} has been verified and is now live on the marketplace!`);
+      fetchPendingVendors();
+    } catch (err) {
+      alert("❌ Failed to verify vendor: " + (err.response?.data?.error || err.message));
+    }
+  };
+
+  if (loading) return <p className="text-xs text-slate-400">Loading pending vendors...</p>;
+
+  return (
+    <div className="space-y-4">
+      <h3 className="font-bold text-sm text-slate-800 border-b pb-2">🛡️ Vendor Credibility Review ({pendingVendors.length})</h3>
+      
+      {pendingVendors.length === 0 ? (
+        <p className="text-xs text-slate-400 py-6 text-center">No pending vendor applications to review.</p>
+      ) : (
+        <div className="space-y-3">
+          {pendingVendors.map(vendor => (
+            <div key={vendor.id} className="bg-amber-50/50 border border-amber-200 rounded-xl p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 text-xs">
+              <div>
+                <span className="font-extrabold text-slate-900 text-sm block">{vendor.full_name}</span>
+                <span className="text-slate-600 font-medium">Category: <span className="text-teal-700 font-bold">{vendor.vendor_category}</span> • Phone: <a href={`tel:${vendor.phone_number}`} className="underline font-bold">{vendor.phone_number}</a></span>
+                <span className="text-[10px] text-slate-400 block mt-1">ID: {vendor.shopin_id} | Mode: {vendor.contact_mode}</span>
+              </div>
+              <button 
+                onClick={() => handleApprove(vendor.id, vendor.full_name)}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded-xl transition cursor-pointer whitespace-nowrap shadow-xs"
+              >
+                Approve & Activate 🟢
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function AdminDashboard() {
   const [activeAdminTab, setActiveAdminTab] = useState('locations'); 
   const [feedback, setFeedback] = useState(null);
@@ -441,6 +507,7 @@ export default function AdminDashboard() {
           <button onClick={() => setActiveAdminTab('locations')} className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${activeAdminTab === 'locations' ? 'bg-indigo-600' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}>📍 Locations</button>
           <button onClick={() => setActiveAdminTab('products')} className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${activeAdminTab === 'products' ? 'bg-teal-600' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}>🛍️ Manage Items</button>
           <button onClick={() => setActiveAdminTab('users')} className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${activeAdminTab === 'users' ? 'bg-purple-600' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}>👥 Users</button>
+          <button onClick={() => setActiveAdminTab('vendors')} className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${activeAdminTab === 'vendors' ? 'bg-rose-600' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}>🏪 Vendors</button>
           <button onClick={() => setActiveAdminTab('orders')} className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${activeAdminTab === 'orders' ? 'bg-emerald-600' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}>📦 Orders</button>
           <button onClick={() => setActiveAdminTab('prices')} className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${activeAdminTab === 'prices' ? 'bg-emerald-600' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}>📊 Prices</button>
           <button onClick={() => setActiveAdminTab('shuttles')} className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${activeAdminTab === 'shuttles' ? 'bg-blue-600' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}>🚀 Shuttles</button>
@@ -562,6 +629,19 @@ export default function AdminDashboard() {
 
       {/* TAB: USERS */}
       {activeAdminTab === 'users' && <UserTracker />}
+
+      {/* 🌟 NEW TAB: VENDOR VERIFICATION */}
+      {activeAdminTab === 'vendors' && (
+        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs max-w-4xl mx-auto space-y-4">
+          <h3 className="font-extrabold text-slate-900 text-base border-b border-slate-100 pb-2">
+            Manage Vendor Registrations
+          </h3>
+          <p className="text-xs text-slate-500">Review pending vendors before they go live on the public marketplace.</p>
+          
+          {/* This calls the component you already built! */}
+          <PendingVendorsManager API_URL={API_URL} adminPin={adminPin} />
+        </div>
+      )}
 
       {/* TAB: ORDERS & QUOTES */}
       {activeAdminTab === 'orders' && (

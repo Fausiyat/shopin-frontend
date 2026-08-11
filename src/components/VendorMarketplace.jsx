@@ -17,7 +17,7 @@ const getSampleProducts = () => [
     id: 'v-prod-1', product_name: 'AB&S Move-In / Move-Out Deep Cleaning', category: 'AB&S Services',
     price_ngn: null, stock_quantity: 1, is_verified: true, vendor_id: 'SHP-ILR-8812',
     vendor_name: 'AB&S Cleaning Services', phone_number: '08059876543', location: 'Ilorin Central Hub',
-    contact_mode: 'DIRECT', is_pickup_available: false, service_type: 'service'
+    contact_mode: 'DIRECT', is_pickup_available: false, service_type: 'service', rating: 4.9, review_count: 1
   },
   {
     id: 'v-prod-2', product_name: 'Pepper Blending & Food Processing', category: 'Mini-Services',
@@ -287,7 +287,7 @@ export default function VendorMarketplace({ marketFilter, onAddToCart, openCheck
                       }`}>
                         {prod.category}
                       </span>
-                      {prod.contact_mode === 'DIRECT' || SERVICE_CATEGORIES.includes(prod.category) ? (
+                     {prod.contact_mode === 'DIRECT' || prod.service_type === 'service' || SERVICE_CATEGORIES.some(c => c.toLowerCase() === (prod.category || '').toLowerCase()) ? (
                         <span className="text-[10px] font-bold px-2 py-0.5 bg-purple-100 text-purple-800 rounded-full flex items-center gap-1">📞 Direct Phone</span>
                       ) : (
                         <span className="text-[10px] font-bold px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-full flex items-center gap-1">🛡️ Escrow (₦200)</span>
@@ -295,6 +295,24 @@ export default function VendorMarketplace({ marketFilter, onAddToCart, openCheck
                     </div>
 
                     <h3 className="font-bold text-slate-900 text-base leading-snug">{prod.product_name}</h3>
+
+                    {/* ⭐ DYNAMIC RATING SYSTEM */}
+                    <div className="flex items-center gap-1 mt-1 mb-1">
+                      {prod.rating > 0 ? (
+                        <>
+                          <div className="flex text-amber-500 text-[10px]">
+                            {'⭐'.repeat(Math.round(prod.rating))}
+                          </div>
+                          <span className="text-[10px] text-slate-500 font-bold ml-1">
+                            {prod.rating} <span className="font-normal">({prod.review_count} reviews)</span>
+                          </span>
+                        </>
+                      ) : (
+                        <span className="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-medium">
+                          🌟 New Vendor
+                        </span>
+                      )}
+                    </div>
                     
                     {prod.category === 'Restaurants' ? (
                       <div className="mt-2 mb-1">

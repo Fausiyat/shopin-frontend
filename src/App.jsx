@@ -166,19 +166,32 @@ function App() {
           </div>
 
           <div className="flex items-center gap-2">
+            
+            {/* 🌟 NEW: MINI WALLET BALANCE INDICATOR */}
+            <button 
+              onClick={() => setActiveTab('wallet')} 
+              className="bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-900 font-extrabold px-3 py-1.5 rounded-xl text-xs flex items-center gap-1 transition-colors cursor-pointer shadow-sm"
+            >
+              <span className="text-[14px]">💳</span> 
+              ₦{Number(walletBalance).toLocaleString()}
+            </button>
+
             <button onClick={() => setShowProfileModal(true)} className="bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold px-3 py-1.5 rounded-xl text-xs flex items-center gap-1.5 transition cursor-pointer">
-              <span>👤</span> {currentUserName}
+              <span>👤</span> <span className="hidden sm:inline">{currentUserName}</span>
             </button>
+            
             <button onClick={() => setIsCheckoutOpen(true)} className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 rounded-xl text-xs flex items-center gap-1.5 shadow-xs transition-all cursor-pointer">
-              <span>🛒 Cart</span>
-              <span className="bg-white text-emerald-800 rounded-full px-1.5 py-0.2 text-xs font-black">{getCartCount()}</span>
+              <span>🛒 <span className="hidden sm:inline">Cart</span></span>
+              <span className="bg-white text-emerald-800 rounded-full px-1.5 py-0.2 text-[10px] font-black">{getCartCount()}</span>
             </button>
+            
           </div>
         </div>
 
         <div className="max-w-6xl mx-auto px-4 flex items-center gap-1 overflow-x-auto text-xs font-semibold py-2 border-t border-slate-100 custom-scrollbar">
           <button onClick={() => setActiveTab('home')} className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap ${activeTab === 'home' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}>🏠 Home</button>
           <button onClick={() => openMarketplaceWithFilter('ALL')} className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap ${activeTab === 'marketplace' ? 'bg-teal-700 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}>🏪 Marketplace</button>
+          <button onClick={() => setActiveTab('wallet')} className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap ${activeTab === 'wallet' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}>💳 Stash Wallet</button>
           <button onClick={() => setActiveTab('orders')} className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap ${activeTab === 'orders' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}>🤖 AI Errand</button>
           <button onClick={() => setActiveTab('pooling')} className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap ${activeTab === 'pooling' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}>🤝 Food Pooling</button>
           <button onClick={() => setActiveTab('shuttles')} className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap ${activeTab === 'shuttles' ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}>🚀 Corridors</button>
@@ -274,6 +287,22 @@ function App() {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
             <section className="lg:col-span-7 bg-white rounded-2xl border border-slate-200 shadow-xs p-6">
               
+              {activeTab === 'wallet' && (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
+                    <span className="text-2xl">💳</span>
+                    <div>
+                      <h3 className="text-lg font-bold text-slate-900">Your Stash Wallet</h3>
+                      <p className="text-xs text-slate-500">Manage your funds, target savings, and escrow.</p>
+                    </div>
+                  </div>
+                  <StashWallet 
+                    walletBalance={walletBalance} 
+                    setWalletBalance={setWalletBalance} 
+                  />
+                </div>
+              )}
+
               {activeTab === 'marketplace' && (
                 // 🌟 Notice we are passing the marketFilter prop here now![cite: 4]
                 <VendorMarketplace 
@@ -314,13 +343,6 @@ function App() {
             </section>
 
             <aside className="lg:col-span-5 space-y-6">
-              <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-5">
-                <StashWallet 
-                  walletBalance={walletBalance} 
-                  setWalletBalance={setWalletBalance} 
-                />
-              </div>
-
               {activeOrderId ? (
                 <OrderTracker orderStatus={activeOrderStatus} />
               ) : (

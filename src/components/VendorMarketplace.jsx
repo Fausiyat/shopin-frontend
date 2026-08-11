@@ -1,13 +1,65 @@
 import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import shopinApi from '../services/api';
 
-// 🌟 NEW: Notice the marketFilter prop passed down from App.jsx!
+// 🌟 MOVED OUTSIDE: This ensures the samples are ready the exact millisecond the app loads!
+const getSampleProducts = () => [
+  {
+    id: 'v-prod-1', product_name: 'AB&S Move-In / Move-Out Deep Cleaning', category: 'AB&S Services',
+    price_ngn: null, stock_quantity: 1, is_verified: true, vendor_id: 'SHP-ILR-8812',
+    vendor_name: 'AB&S Cleaning Services', phone_number: '08059876543', location: 'Ilorin Central Hub',
+    contact_mode: 'DIRECT', is_pickup_available: false
+  },
+  {
+    id: 'v-prod-2', product_name: 'Pepper Blending & Food Processing', category: 'Mini-Services',
+    price_ngn: null, stock_quantity: 1, is_verified: true, vendor_id: 'SHP-ILR-3044',
+    vendor_name: 'Mama Alhaja Pepper Grinding', phone_number: '08031234567', location: 'Mandate Market',
+    contact_mode: 'DIRECT', is_pickup_available: true
+  },
+  
+  // 🌟 GENERIC MEAL SAMPLES
+  {
+    id: 'v-prod-6', product_name: 'Jollof Rice & Chicken', category: 'Restaurants',
+    price_ngn: 2500, stock_quantity: 50, image_url: 'https://via.placeholder.com/150?text=Jollof+Rice', is_verified: true, vendor_id: 'VND-ILR-REST',
+    vendor_name: 'Multiple Restaurants', location: 'Ilorin City', contact_mode: 'MIDDLEMAN', is_pickup_available: true
+  },
+  {
+    id: 'v-prod-7', product_name: 'Amala, Ewedu & Assorted Meat', category: 'Restaurants',
+    price_ngn: 2000, stock_quantity: 100, image_url: 'https://via.placeholder.com/150?text=Amala', is_verified: true, vendor_id: 'VND-ILR-REST',
+    vendor_name: 'Multiple Restaurants', location: 'Ilorin City', contact_mode: 'MIDDLEMAN', is_pickup_available: true
+  },
+  {
+    id: 'v-prod-10', product_name: 'Meatpie / Chickenpie', category: 'Restaurants',
+    price_ngn: 800, stock_quantity: 100, image_url: 'https://via.placeholder.com/150?text=Meatpie', is_verified: true, vendor_id: 'VND-ILR-REST',
+    vendor_name: 'Multiple Restaurants', location: 'Ilorin City', contact_mode: 'MIDDLEMAN', is_pickup_available: true
+  },
+  
+  {
+    id: 'v-prod-8', product_name: 'Shoprite Fresh Bread', category: 'Supermarkets',
+    price_ngn: 1200, stock_quantity: 20, image_url: 'https://via.placeholder.com/150?text=Shoprite+Bread', is_verified: true, vendor_id: 'VND-ILR-MALL',
+    vendor_name: 'Shoprite Kwara Mall', location: 'Fate Hub', contact_mode: 'MIDDLEMAN', is_pickup_available: true
+  },
+  {
+    id: 'v-prod-9', product_name: 'Garri Ijebu (Paint Rubber)', category: 'Local Markets',
+    price_ngn: 2800, stock_quantity: 500, image_url: 'https://via.placeholder.com/150?text=Garri', is_verified: true, vendor_id: 'VND-ILR-MANDATE',
+    vendor_name: 'Iya Elelubo', location: 'Mandate Market', contact_mode: 'MIDDLEMAN', is_pickup_available: true
+  }
+];
+
 export default function VendorMarketplace({ marketFilter, onAddToCart, openCheckout }) {
   const [activeSubTab, setActiveSubTab] = useState('browse'); 
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
-  const [products, setProducts] = useState([]);
+  
+  // 🌟 FIX: Initialize state WITH the sample products so they appear instantly
+  const [products, setProducts] = useState(getSampleProducts());
   const [feedback, setFeedback] = useState(null);
+
+  // Dynamic Locations & Selected Restaurant State
+  const [locations, setLocations] = useState({ restaurants: ['Item 7', 'Aroma', 'Food 101', 'Captain Cook', 'K-Bakes'] });
+  const [selectedRestaurants, setSelectedRestaurants] = useState({});
+
+  const API_URL = import.meta.env.VITE_API_URL || 'https://shopin-kwara-backend.onrender.com';
 
   // Vendor Registration Form State
   const [regFullName, setRegFullName] = useState('');
@@ -29,16 +81,30 @@ export default function VendorMarketplace({ marketFilter, onAddToCart, openCheck
   const [isPickupAvailable, setIsPickupAvailable] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Buyer Contact Access State for Services
   const [contactRevealed, setContactRevealed] = useState({});
 
-  // 🌟 NEW: Listen for clicks from the Home Screen Bubbles
+  // Listen for clicks from the Home Screen Bubbles
   useEffect(() => {
     if (marketFilter === 'MARKETS') setSelectedCategory('Local Markets');
     if (marketFilter === 'SUPERMARKETS') setSelectedCategory('Supermarkets');
     if (marketFilter === 'RESTAURANTS') setSelectedCategory('Restaurants');
     if (marketFilter === 'ALL') setSelectedCategory('All');
   }, [marketFilter]);
+
+  // Fetch dynamic restaurants from your database
+  useEffect(() => {
+    const fetchDynamicLocations = async () => {
+      try {
+        const res = await axios.get(`${API_URL}/api/locations`);
+        if (res.data && res.data.restaurants) {
+          setLocations(res.data);
+        }
+      } catch (err) {
+        console.warn("Could not fetch locations, using fallbacks.");
+      }
+    };
+    fetchDynamicLocations();
+  }, [API_URL]);
 
   // Fetch REAL Marketplace Catalog on Load
   useEffect(() => {
@@ -48,55 +114,14 @@ export default function VendorMarketplace({ marketFilter, onAddToCart, openCheck
           const response = await shopinApi.getVendorProducts();
           if (response.data && response.data.data && response.data.data.length > 0) {
             setProducts(response.data.data);
-            return;
           }
         }
       } catch (err) {
-        console.warn("Could not fetch live catalog, falling back to samples:", err.message);
+        console.warn("Using sample catalog products due to fetch error:", err.message);
       }
-      setProducts(getSampleProducts());
     };
-
     fetchCatalog();
   }, []);
-
-  const getSampleProducts = () => [
-    // ... EXISTING SAMPLE PRODUCTS ...
-    {
-      id: 'v-prod-1', product_name: 'AB&S Move-In / Move-Out Deep Cleaning', category: 'AB&S Services',
-      price_ngn: null, stock_quantity: 1, is_verified: true, vendor_id: 'SHP-ILR-8812',
-      vendor_name: 'AB&S Cleaning Services', phone_number: '08059876543', location: 'Ilorin Central Hub',
-      contact_mode: 'DIRECT', is_pickup_available: false
-    },
-    {
-      id: 'v-prod-2', product_name: 'Pepper Blending & Food Processing', category: 'Mini-Services',
-      price_ngn: null, stock_quantity: 1, is_verified: true, vendor_id: 'SHP-ILR-3044',
-      vendor_name: 'Mama Alhaja Pepper Grinding', phone_number: '08031234567', location: 'Mandate Market',
-      contact_mode: 'DIRECT', is_pickup_available: true
-    },
-    
-    // 🌟 NEW SAMPLES FOR THE NEW CATEGORIES
-    {
-      id: 'v-prod-6', product_name: 'Item 7 Chicken & Chips', category: 'Restaurants',
-      price_ngn: 2500, stock_quantity: 50, image_url: 'https://via.placeholder.com/150?text=Item+7', is_verified: true, vendor_id: 'VND-ILR-ITEM7',
-      vendor_name: 'Item 7', location: 'Tanke Hub', contact_mode: 'MIDDLEMAN', is_pickup_available: true
-    },
-    {
-      id: 'v-prod-7', product_name: 'Aroma Amala & Ewedu', category: 'Restaurants',
-      price_ngn: 1800, stock_quantity: 100, image_url: 'https://via.placeholder.com/150?text=Aroma+Amala', is_verified: true, vendor_id: 'VND-ILR-AROMA',
-      vendor_name: 'Aroma Restaurant', location: 'Challenge Hub', contact_mode: 'MIDDLEMAN', is_pickup_available: true
-    },
-    {
-      id: 'v-prod-8', product_name: 'Shoprite Fresh Bread', category: 'Supermarkets',
-      price_ngn: 1200, stock_quantity: 20, image_url: 'https://via.placeholder.com/150?text=Shoprite+Bread', is_verified: true, vendor_id: 'VND-ILR-MALL',
-      vendor_name: 'Shoprite Kwara Mall', location: 'Fate Hub', contact_mode: 'MIDDLEMAN', is_pickup_available: true
-    },
-    {
-      id: 'v-prod-9', product_name: 'Garri Ijebu (Paint Rubber)', category: 'Local Markets',
-      price_ngn: 2800, stock_quantity: 500, image_url: 'https://via.placeholder.com/150?text=Garri', is_verified: true, vendor_id: 'VND-ILR-MANDATE',
-      vendor_name: 'Iya Elelubo', location: 'Mandate Market', contact_mode: 'MIDDLEMAN', is_pickup_available: true
-    }
-  ];
 
   const handleRegisterVendor = async (e) => {
     e.preventDefault();
@@ -156,10 +181,29 @@ export default function VendorMarketplace({ marketFilter, onAddToCart, openCheck
   };
 
   const handleBuyWithEscrow = (prod, isPickup = false) => {
+    // 🌟 Check if the user selected a specific restaurant from the dropdown
+    const chosenRestaurant = prod.category === 'Restaurants' 
+      ? (selectedRestaurants[prod.id] || locations.restaurants[0] || 'Selected Restaurant')
+      : prod.vendor_name;
+      
+    // Change the name to "Jollof Rice (from Item 7)"
+    const finalName = prod.category === 'Restaurants' 
+      ? `${prod.product_name} (from ${chosenRestaurant})` 
+      : prod.product_name;
+
     const cartItem = {
-      id: prod.id, name: prod.product_name, item_name: prod.product_name, price: Number(prod.price_ngn),
-      quantity: 1, category: prod.category, image_url: prod.image_url, isEscrowItem: true, vendorId: prod.vendor_id,
-      is_pickup_only: isPickup, vendor_fee: 200 
+      id: prod.id + (prod.category === 'Restaurants' ? `-${chosenRestaurant}` : ''),
+      name: finalName, 
+      item_name: finalName, 
+      price: Number(prod.price_ngn),
+      quantity: 1, 
+      category: prod.category, 
+      image_url: prod.image_url, 
+      isEscrowItem: true, 
+      vendorId: prod.vendor_id,
+      vendor_name: chosenRestaurant,
+      is_pickup_only: isPickup, 
+      vendor_fee: 200 
     };
     if (onAddToCart) onAddToCart([cartItem]);
     if (openCheckout) openCheckout();
@@ -176,7 +220,6 @@ export default function VendorMarketplace({ marketFilter, onAddToCart, openCheck
     }
   };
 
-  // 🌟 NEW: Added the requested new categories to the filter tabs!
   const filterTabs = ['All', 'Local Markets', 'Supermarkets', 'Restaurants', 'Foodstuff', 'Wearables', 'Electronics', 'AB&S Services', 'Mini-Services', 'Provisions'];
 
   const filteredProducts = products.filter(prod => {
@@ -189,58 +232,25 @@ export default function VendorMarketplace({ marketFilter, onAddToCart, openCheck
 
   return (
     <div className="space-y-6">
-      {/* Banner Header */}
       <div className="bg-gradient-to-r from-teal-800 to-emerald-900 p-5 rounded-2xl text-white shadow-md">
         <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3">
           <div>
             <h2 className="text-lg font-extrabold flex items-center gap-2">
               <span>🏪</span> ShopIn Vendor Marketplace
             </h2>
-            <p className="text-xs text-teal-100 mt-1">
-              Buy from Local Markets, Supermarkets, Restaurants, or book Services.
-            </p>
+            <p className="text-xs text-teal-100 mt-1">Buy from Local Markets, Supermarkets, Restaurants, or book Services.</p>
           </div>
 
           <div className="flex gap-2">
-            <button
-              onClick={() => setActiveSubTab('browse')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
-                activeSubTab === 'browse'
-                  ? 'bg-white text-teal-900 shadow-xs'
-                  : 'bg-teal-900/50 text-teal-100 hover:bg-teal-900/80'
-              }`}
-            >
-              🛒 Browse Marketplace
-            </button>
-            <button
-              onClick={() => setActiveSubTab('register_vendor')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
-                activeSubTab === 'register_vendor'
-                  ? 'bg-white text-teal-900 shadow-xs'
-                  : 'bg-teal-900/50 text-teal-100 hover:bg-teal-900/80'
-              }`}
-            >
-              📝 Register as Vendor
-            </button>
-            <button
-              onClick={() => setActiveSubTab('list_product')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
-                activeSubTab === 'list_product'
-                  ? 'bg-white text-teal-900 shadow-xs'
-                  : 'bg-teal-900/50 text-teal-100 hover:bg-teal-900/80'
-              }`}
-            >
-              ➕ List Items / Services
-            </button>
+            <button onClick={() => setActiveSubTab('browse')} className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${activeSubTab === 'browse' ? 'bg-white text-teal-900 shadow-xs' : 'bg-teal-900/50 text-teal-100 hover:bg-teal-900/80'}`}>🛒 Browse</button>
+            <button onClick={() => setActiveSubTab('register_vendor')} className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${activeSubTab === 'register_vendor' ? 'bg-white text-teal-900 shadow-xs' : 'bg-teal-900/50 text-teal-100 hover:bg-teal-900/80'}`}>📝 Register Vendor</button>
+            <button onClick={() => setActiveSubTab('list_product')} className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${activeSubTab === 'list_product' ? 'bg-white text-teal-900 shadow-xs' : 'bg-teal-900/50 text-teal-100 hover:bg-teal-900/80'}`}>➕ List Item</button>
           </div>
         </div>
       </div>
 
-      {/* Toast Feedback */}
       {feedback && (
-        <div className={`p-3.5 rounded-xl text-xs font-semibold flex items-center justify-between ${
-          feedback.type === 'success' ? 'bg-emerald-100 text-emerald-900 border border-emerald-200' : 'bg-red-100 text-red-900'
-        }`}>
+        <div className={`p-3.5 rounded-xl text-xs font-semibold flex items-center justify-between ${feedback.type === 'success' ? 'bg-emerald-100 text-emerald-900 border border-emerald-200' : 'bg-red-100 text-red-900'}`}>
           <span>{feedback.text}</span>
           <button onClick={() => setFeedback(null)} className="font-bold cursor-pointer">✕</button>
         </div>
@@ -250,32 +260,17 @@ export default function VendorMarketplace({ marketFilter, onAddToCart, openCheck
       {activeSubTab === 'browse' && (
         <div className="space-y-4">
           <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
-            <input
-              type="text"
-              placeholder="Search markets, restaurants, item 7..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full sm:w-64 p-2.5 border border-slate-300 rounded-xl text-xs outline-none focus:ring-2 focus:ring-teal-500 bg-white"
-            />
+            <input type="text" placeholder="Search markets, restaurants, amala..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full sm:w-64 p-2.5 border border-slate-300 rounded-xl text-xs outline-none focus:ring-2 focus:ring-teal-500 bg-white" />
 
             <div className="flex gap-1.5 overflow-x-auto w-full sm:w-auto text-xs pb-1 custom-scrollbar">
               {filterTabs.map((cat) => (
-                <button
-                  key={cat}
-                  onClick={() => setSelectedCategory(cat)}
-                  className={`px-3 py-1.5 rounded-lg whitespace-nowrap font-medium cursor-pointer transition ${
-                    selectedCategory === cat
-                      ? 'bg-teal-700 text-white font-bold shadow-sm'
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                  }`}
-                >
+                <button key={cat} onClick={() => setSelectedCategory(cat)} className={`px-3 py-1.5 rounded-lg whitespace-nowrap font-medium cursor-pointer transition ${selectedCategory === cat ? 'bg-teal-700 text-white font-bold shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
                   {cat}
                 </button>
               ))}
             </div>
           </div>
 
-          {/* Product Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredProducts.length > 0 ? (
               filteredProducts.map((prod) => (
@@ -296,18 +291,31 @@ export default function VendorMarketplace({ marketFilter, onAddToCart, openCheck
                         {prod.category}
                       </span>
                       {prod.contact_mode === 'DIRECT' ? (
-                        <span className="text-[10px] font-bold px-2 py-0.5 bg-purple-100 text-purple-800 rounded-full flex items-center gap-1">📞 Direct Phone Contact</span>
+                        <span className="text-[10px] font-bold px-2 py-0.5 bg-purple-100 text-purple-800 rounded-full flex items-center gap-1">📞 Direct Phone</span>
                       ) : (
-                        <span className="text-[10px] font-bold px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-full flex items-center gap-1">🛡️ Escrow (₦200 Fee)</span>
+                        <span className="text-[10px] font-bold px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-full flex items-center gap-1">🛡️ Escrow (₦200)</span>
                       )}
                     </div>
 
                     <h3 className="font-bold text-slate-900 text-base leading-snug">{prod.product_name}</h3>
-                    <p className="text-xs text-slate-500 mt-1 font-medium flex items-center gap-1">
-                      <span>📍</span> {prod.location || 'Ilorin Hub'}
-                    </p>
-                    {prod.vendor_name && (
-                      <p className="text-[10px] font-bold text-teal-700 mt-1">Vendor: {prod.vendor_name}</p>
+                    
+                    {/* 🌟 RESTAURANT DROPDOWN SELECTOR */}
+                    {prod.category === 'Restaurants' ? (
+                      <div className="mt-2 mb-1">
+                        <label className="text-[10px] font-bold text-slate-500 uppercase">Select Restaurant:</label>
+                        <select
+                          value={selectedRestaurants[prod.id] || locations.restaurants[0] || 'Item 7'}
+                          onChange={(e) => setSelectedRestaurants({ ...selectedRestaurants, [prod.id]: e.target.value })}
+                          className="w-full mt-1 p-1.5 border border-amber-200 rounded-lg text-xs bg-amber-50 text-amber-900 font-bold outline-none"
+                        >
+                          {locations.restaurants.map((r, i) => <option key={i} value={r}>{r}</option>)}
+                        </select>
+                      </div>
+                    ) : (
+                      <>
+                        <p className="text-xs text-slate-500 mt-1 font-medium flex items-center gap-1"><span>📍</span> {prod.location || 'Ilorin Hub'}</p>
+                        {prod.vendor_name && <p className="text-[10px] font-bold text-teal-700 mt-1">Vendor: {prod.vendor_name}</p>}
+                      </>
                     )}
                   </div>
 
@@ -329,13 +337,13 @@ export default function VendorMarketplace({ marketFilter, onAddToCart, openCheck
                     <div className="pt-3 border-t border-slate-100 flex flex-col space-y-2">
                       <div className="flex justify-between items-center">
                         <div>
-                          <span className="text-[10px] text-slate-400 block font-medium">Item Price</span>
+                          <span className="text-[10px] text-slate-400 block font-medium">Est. Price</span>
                           <span className="text-lg font-extrabold text-emerald-700">₦{Number(prod.price_ngn).toLocaleString()}</span>
                         </div>
                       </div>
                       <div className="grid grid-cols-2 gap-2 pt-1">
                         <button onClick={() => handleBuyWithEscrow(prod, false)} className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] py-2 rounded-xl text-center cursor-pointer">
-                          🚚 Buy + Delivery
+                          🚚 Add to Cart
                         </button>
                         {prod.is_pickup_available && (
                           <button onClick={() => handleBuyWithEscrow(prod, true)} className="bg-slate-800 hover:bg-slate-900 text-white font-bold text-[11px] py-2 rounded-xl text-center cursor-pointer">
@@ -349,7 +357,7 @@ export default function VendorMarketplace({ marketFilter, onAddToCart, openCheck
               ))
             ) : (
               <div className="col-span-full text-center py-12 text-slate-400 text-sm">
-                No items found matching "{searchQuery}". Select another category above!
+                No items found matching "{searchQuery}".
               </div>
             )}
           </div>
@@ -360,26 +368,17 @@ export default function VendorMarketplace({ marketFilter, onAddToCart, openCheck
       {activeSubTab === 'register_vendor' && (
         <form onSubmit={handleRegisterVendor} className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs max-w-lg mx-auto space-y-4">
           <h3 className="font-extrabold text-slate-900 text-base border-b border-slate-100 pb-2">Register as a ShopIn Verified Vendor</h3>
-          <div>
-            <label className="text-xs font-semibold text-slate-600 block mb-1">Full Name / Business Name</label>
-            <input type="text" value={regFullName} onChange={(e) => setRegFullName(e.target.value)} placeholder="e.g. Item 7 / Alhaja Pepper Grinding" required className="w-full p-2.5 border rounded-xl text-xs" />
-          </div>
+          <div><label className="text-xs font-semibold text-slate-600 block mb-1">Full Name / Business Name</label><input type="text" value={regFullName} onChange={(e) => setRegFullName(e.target.value)} required className="w-full p-2.5 border rounded-xl text-xs" /></div>
           <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-xs font-semibold text-slate-600 block mb-1">Phone Number</label>
-              <input type="tel" value={regPhone} onChange={(e) => setRegPhone(e.target.value)} required className="w-full p-2.5 border rounded-xl text-xs" />
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-slate-600 block mb-1">Email (Optional)</label>
-              <input type="email" value={regEmail} onChange={(e) => setRegEmail(e.target.value)} className="w-full p-2.5 border rounded-xl text-xs" />
-            </div>
+            <div><label className="text-xs font-semibold text-slate-600 block mb-1">Phone Number</label><input type="tel" value={regPhone} onChange={(e) => setRegPhone(e.target.value)} required className="w-full p-2.5 border rounded-xl text-xs" /></div>
+            <div><label className="text-xs font-semibold text-slate-600 block mb-1">Email (Optional)</label><input type="email" value={regEmail} onChange={(e) => setRegEmail(e.target.value)} className="w-full p-2.5 border rounded-xl text-xs" /></div>
           </div>
           <div>
             <label className="text-xs font-semibold text-slate-600 block mb-1">Vendor Category</label>
             <select value={regCategory} onChange={(e) => setRegCategory(e.target.value)} className="w-full p-2.5 border rounded-xl text-xs bg-white font-medium">
               <option value="Restaurants">Restaurants & Bukas</option>
               <option value="Supermarkets">Supermarkets</option>
-              <option value="Local Markets">Local Markets (Foodstuff & Produce)</option>
+              <option value="Local Markets">Local Markets</option>
               <option value="Wearables">Wearables</option>
               <option value="Electronics">Electronics</option>
               <option value="Mini-Services">Mini-Services</option>
@@ -394,10 +393,7 @@ export default function VendorMarketplace({ marketFilter, onAddToCart, openCheck
         <form onSubmit={handleListProduct} className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs max-w-lg mx-auto space-y-4">
           <h3 className="font-extrabold text-slate-900 text-base border-b border-slate-100 pb-2">List Item or Service</h3>
           <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-xs font-semibold text-slate-600 block mb-1">Vendor ShopIn ID</label>
-              <input type="text" value={vendorShopinId} onChange={(e) => setVendorShopinId(e.target.value)} required className="w-full p-2.5 border rounded-xl text-xs font-bold" />
-            </div>
+            <div><label className="text-xs font-semibold text-slate-600 block mb-1">Vendor ShopIn ID</label><input type="text" value={vendorShopinId} onChange={(e) => setVendorShopinId(e.target.value)} required className="w-full p-2.5 border rounded-xl text-xs font-bold" /></div>
             <div>
               <label className="text-xs font-semibold text-slate-600 block mb-1">Category</label>
               <select value={category} onChange={(e) => setCategory(e.target.value)} className="w-full p-2.5 border rounded-xl text-xs bg-white font-medium">
@@ -409,23 +405,11 @@ export default function VendorMarketplace({ marketFilter, onAddToCart, openCheck
               </select>
             </div>
           </div>
-          <div>
-            <label className="text-xs font-semibold text-slate-600 block mb-1">Item Name</label>
-            <input type="text" value={productName} onChange={(e) => setProductName(e.target.value)} placeholder="e.g. Chicken & Chips" required className="w-full p-2.5 border rounded-xl text-xs" />
-          </div>
-          <div>
-            <label className="text-xs font-semibold text-slate-600 block mb-1">Image URL (Optional)</label>
-            <input type="url" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} placeholder="https://..." className="w-full p-2.5 border rounded-xl text-xs" />
-          </div>
+          <div><label className="text-xs font-semibold text-slate-600 block mb-1">Item Name</label><input type="text" value={productName} onChange={(e) => setProductName(e.target.value)} required className="w-full p-2.5 border rounded-xl text-xs" /></div>
+          <div><label className="text-xs font-semibold text-slate-600 block mb-1">Image URL (Optional)</label><input type="url" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} className="w-full p-2.5 border rounded-xl text-xs" /></div>
           <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-xs font-semibold text-slate-600 block mb-1">Price (₦ NGN)</label>
-              <input type="number" value={priceNgn} onChange={(e) => setPriceNgn(e.target.value)} required className="w-full p-2.5 border rounded-xl text-xs" />
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-slate-600 block mb-1">Location Hub</label>
-              <input type="text" value={locationHub} onChange={(e) => setLocationHub(e.target.value)} placeholder="e.g. Tanke Hub" className="w-full p-2.5 border rounded-xl text-xs" />
-            </div>
+            <div><label className="text-xs font-semibold text-slate-600 block mb-1">Price (₦ NGN)</label><input type="number" value={priceNgn} onChange={(e) => setPriceNgn(e.target.value)} required className="w-full p-2.5 border rounded-xl text-xs" /></div>
+            <div><label className="text-xs font-semibold text-slate-600 block mb-1">Location Hub</label><input type="text" value={locationHub} onChange={(e) => setLocationHub(e.target.value)} className="w-full p-2.5 border rounded-xl text-xs" /></div>
           </div>
           <button type="submit" disabled={isSubmitting} className="w-full bg-teal-700 text-white font-bold py-3.5 rounded-xl text-xs">Publish Listing 🔒</button>
         </form>

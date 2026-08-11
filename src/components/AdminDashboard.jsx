@@ -3,16 +3,17 @@ import axios from 'axios';
 import shopinApi from '../services/api';
 import UserTracker from './UserTracker';
 
-function AdminProductsManager({ API_URL, adminPin }) {
-  const getSampleAdminProducts = () => [
-    { id: 'v-prod-6', product_name: 'Item 7 Chicken & Chips', category: 'Restaurants', price_ngn: 2500, location: 'Tanke Hub' },
-    { id: 'v-prod-7', product_name: 'Aroma Amala & Ewedu', category: 'Restaurants', price_ngn: 1800, location: 'Challenge Hub' },
-    { id: 'v-prod-8', product_name: 'Shoprite Fresh Bread', category: 'Supermarkets', price_ngn: 1200, location: 'Fate Hub' },
-    { id: 'v-prod-9', product_name: 'Garri Ijebu (Paint Rubber)', category: 'Local Markets', price_ngn: 2800, location: 'Mandate Market' }
-  ];
+// 🌟 MOVED OUTSIDE: This guarantees the data always exists and cannot be overwritten by empty states!
+const SAMPLE_ADMIN_PRODUCTS = [
+  { id: 'v-prod-6', product_name: 'Item 7 Chicken & Chips', category: 'Restaurants', price_ngn: 2500, location: 'Tanke Hub' },
+  { id: 'v-prod-7', product_name: 'Aroma Amala & Ewedu', category: 'Restaurants', price_ngn: 1800, location: 'Challenge Hub' },
+  { id: 'v-prod-8', product_name: 'Shoprite Fresh Bread', category: 'Supermarkets', price_ngn: 1200, location: 'Fate Hub' },
+  { id: 'v-prod-9', product_name: 'Garri Ijebu (Paint Rubber)', category: 'Local Markets', price_ngn: 2800, location: 'Mandate Market' }
+];
 
-  // Initialize state directly with items so they show up immediately!
-  const [items, setItems] = useState(getSampleAdminProducts());
+function AdminProductsManager({ API_URL, adminPin }) {
+  // Initialize state directly with the constant
+  const [items, setItems] = useState(SAMPLE_ADMIN_PRODUCTS);
   const [editingItem, setEditingItem] = useState(null);
   const [newName, setNewName] = useState('');
   const [newPrice, setNewPrice] = useState('');
@@ -24,24 +25,17 @@ function AdminProductsManager({ API_URL, adminPin }) {
   const fetchItems = async () => {
     try {
       const res = await axios.get(`${API_URL}/api/vendors/products`);
-      if (res.data && res.data.data && res.data.data.length > 0) {
-        setItems(res.data.data);
-      } else {
-        // Fallback samples if database is empty
-        setItems(getSampleAdminProducts());
+      const fetchedData = res.data?.data || res.data;
+      
+      // 🌟 ONLY override state if the database actually returns real items.
+      // Notice there is no "else" block, so it will never wipe out the samples!
+      if (Array.isArray(fetchedData) && fetchedData.length > 0) {
+        setItems(fetchedData);
       }
     } catch (err) {
-      console.warn("Using local sample items fallback:", err);
-      setItems(getSampleAdminProducts());
+      console.warn("API empty or failed, keeping local samples:", err.message);
     }
   };
-
-  const getSampleAdminProducts = () => [
-    { id: 'v-prod-6', product_name: 'Item 7 Chicken & Chips', category: 'Restaurants', price_ngn: 2500, location: 'Tanke Hub' },
-    { id: 'v-prod-7', product_name: 'Aroma Amala & Ewedu', category: 'Restaurants', price_ngn: 1800, location: 'Challenge Hub' },
-    { id: 'v-prod-8', product_name: 'Shoprite Fresh Bread', category: 'Supermarkets', price_ngn: 1200, location: 'Fate Hub' },
-    { id: 'v-prod-9', product_name: 'Garri Ijebu (Paint Rubber)', category: 'Local Markets', price_ngn: 2800, location: 'Mandate Market' }
-  ];
 
   const handleSaveEdit = async (id) => {
     try {
@@ -55,7 +49,7 @@ function AdminProductsManager({ API_URL, adminPin }) {
       setEditingItem(null);
       fetchItems();
     } catch (err) {
-      // Local UI update fallback for samples
+      // Local UI update fallback
       setItems(prev => prev.map(item => item.id === id ? { ...item, product_name: newName, price_ngn: newPrice ? parseFloat(newPrice) : item.price_ngn } : item));
       alert("✅ Item updated locally!");
       setEditingItem(null);

@@ -15,8 +15,8 @@ import shopinApi from './services/api';
 function App() {
   const [activeTab, setActiveTab] = useState('home'); 
   
-  // 🌟 NEW: This state remembers WHICH bubble you clicked so the marketplace can filter it!
-  const [marketFilter, setMarketFilter] = useState('ALL'); 
+  // 🌟 NEW: This state remembers WHICH bubble you clicked so the marketplace can filter it![cite: 4]
+  const [marketFilter, setMarketFilter] = useState('ALL');
 
   const [cartItems, setCartItems] = useState([]);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
@@ -133,7 +133,7 @@ function App() {
     }, 0);
   };
 
-  // 🌟 HELPER TO HANDLE BUBBLE CLICKS
+  // 🌟 HELPER TO HANDLE BUBBLE CLICKS[cite: 4]
   const openMarketplaceWithFilter = (filterType) => {
     setMarketFilter(filterType);
     setActiveTab('marketplace');
@@ -189,9 +189,9 @@ function App() {
 
       <main className="max-w-6xl mx-auto px-4 py-8">
         
-        {/* 🌟 GLOVO-STYLE HOME TAB WITH NEW LAYOUT */}
+        {/* 🌟 GLOVO-STYLE HOME TAB WITH NEW LAYOUT[cite: 4] */}
         {activeTab === 'home' ? (
-          <div className="w-full space-y-8">
+          <div className="w-full space-y-6">
             <section className="bg-emerald-800 text-white p-8 md:p-12 text-center rounded-3xl shadow-md">
               <h1 className="text-3xl md:text-4xl font-extrabold mb-6 tracking-tight">What do you need today?</h1>
               <div className="max-w-2xl mx-auto bg-white rounded-full flex items-center overflow-hidden px-4 py-3 shadow-lg">
@@ -199,6 +199,33 @@ function App() {
                 <input type="text" placeholder="Search for yams, item 7, or a market..." className="w-full p-2 text-slate-800 focus:outline-none font-medium" />
               </div>
             </section>
+
+            {/* 🛟 ADMIN SUPPORT & HELP BANNER */}
+            <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs shadow-xs max-w-5xl mx-auto">
+              <div className="flex items-center gap-3">
+                <span className="text-2xl">🛟</span>
+                <div>
+                  <span className="font-extrabold text-amber-900 text-sm block">Need Help or Have an Issue?</span>
+                  <span className="text-amber-700 font-medium">Contact ShopIn Admin instantly for order, delivery, or wallet support.</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <a 
+                  href="tel:08143086509" 
+                  className="flex-1 sm:flex-initial bg-amber-600 hover:bg-amber-700 text-white font-bold px-4 py-2.5 rounded-xl text-center transition cursor-pointer shadow-xs whitespace-nowrap"
+                >
+                  📞 Call Admin
+                </a>
+                <a 
+                  href="https://wa.me/2348143086509?text=Hello%20ShopIn%20Admin,%20I%20need%20help%20with%20an%20issue:" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="flex-1 sm:flex-initial bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2.5 rounded-xl text-center transition cursor-pointer shadow-xs whitespace-nowrap"
+                >
+                  💬 WhatsApp Chat
+                </a>
+              </div>
+            </div>
 
             <section className="grid grid-cols-2 md:grid-cols-3 gap-4 max-w-5xl mx-auto">
               
@@ -243,14 +270,14 @@ function App() {
           </div>
         ) : (
           
-          /* ORIGINAL LAYOUT FOR ALL OTHER TABS */
+          /* ORIGINAL LAYOUT FOR ALL OTHER TABS[cite: 4] */
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
             <section className="lg:col-span-7 bg-white rounded-2xl border border-slate-200 shadow-xs p-6">
               
               {activeTab === 'marketplace' && (
-                // 🌟 Notice we are passing the marketFilter prop here now!
+                // 🌟 Notice we are passing the marketFilter prop here now![cite: 4]
                 <VendorMarketplace 
-                  marketFilter={marketFilter} 
+                  marketFilter={marketFilter}
                   onAddToCart={handleAddToCart} 
                   openCheckout={() => setIsCheckoutOpen(true)} 
                 />

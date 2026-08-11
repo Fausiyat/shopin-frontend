@@ -102,7 +102,7 @@ const StashWallet = ({ walletBalance, setWalletBalance }) => {
             type="submit"
             className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl text-sm transition-colors cursor-pointer shadow-md"
           >
-            Deposit via OPay Transfer ➔
+            Deposit via Bank Transfer ➔
           </button>
         </form>
       </div>

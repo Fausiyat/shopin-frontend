@@ -16,8 +16,6 @@ const getSampleProducts = () => [
     vendor_name: 'Mama Alhaja Pepper Grinding', phone_number: '08031234567', location: 'Mandate Market',
     contact_mode: 'DIRECT', is_pickup_available: true
   },
-  
-  // 🌟 GENERIC MEAL SAMPLES
   {
     id: 'v-prod-6', product_name: 'Jollof Rice & Chicken', category: 'Restaurants',
     price_ngn: 2500, stock_quantity: 50, image_url: 'images/jollof.JPG', is_verified: true, vendor_id: 'VND-ILR-REST',
@@ -33,7 +31,6 @@ const getSampleProducts = () => [
     price_ngn: 800, stock_quantity: 100, image_url: 'images/mepie.JPG', is_verified: true, vendor_id: 'VND-ILR-REST',
     vendor_name: 'Multiple Restaurants', location: 'Ilorin City', contact_mode: 'MIDDLEMAN', is_pickup_available: true
   },
-  
   {
     id: 'v-prod-8', product_name: 'Shoprite Fresh Bread', category: 'Supermarkets',
     price_ngn: 1200, stock_quantity: 20, image_url: 'images/bread.JPG', is_verified: true, vendor_id: 'VND-ILR-MALL',
@@ -47,11 +44,21 @@ const getSampleProducts = () => [
 ];
 
 export default function VendorMarketplace({ marketFilter, onAddToCart, openCheckout }) {
+  
+  // 🌟 FREE UNLOCK STATE & FUNCTION
+  const [unlockedPhones, setUnlockedPhones] = useState({});
+  
+  const handleUnlockContact = (vendorProd) => {
+    // Instantly reveal the number for free!
+    setUnlockedPhones(prev => ({ 
+      ...prev, 
+      [vendorProd.id]: vendorProd.phone_number 
+    }));
+  };
+
   const [activeSubTab, setActiveSubTab] = useState('browse'); 
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
-  
-  // 🌟 FIX: Initialize state WITH the sample products so they appear instantly
   const [products, setProducts] = useState(getSampleProducts());
   const [feedback, setFeedback] = useState(null);
 
@@ -72,7 +79,6 @@ export default function VendorMarketplace({ marketFilter, onAddToCart, openCheck
   const [vendorShopinId, setVendorShopinId] = useState('VND-ILR-1001');
   const [productName, setProductName] = useState('');
   const [category, setCategory] = useState('Wearables');
-  const [serviceSubCategory, setServiceSubCategory] = useState('Janitorial Cleaning');
   const [priceNgn, setPriceNgn] = useState('');
   const [stockQty, setStockQty] = useState('10');
   const [locationHub, setLocationHub] = useState('Ilorin Central Hub');
@@ -80,8 +86,6 @@ export default function VendorMarketplace({ marketFilter, onAddToCart, openCheck
   const [allowDirectContact, setAllowDirectContact] = useState(false);
   const [isPickupAvailable, setIsPickupAvailable] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const [contactRevealed, setContactRevealed] = useState({});
 
   // Listen for clicks from the Home Screen Bubbles
   useEffect(() => {
@@ -148,14 +152,13 @@ export default function VendorMarketplace({ marketFilter, onAddToCart, openCheck
   const handleListProduct = async (e) => {
     e.preventDefault();
     const isServiceCategory = category === 'AB&S Services' || category === 'Mini-Services';
-    const finalTitle = isServiceCategory ? `${productName || serviceSubCategory}` : productName;
-    if (!finalTitle) return;
+    if (!productName) return;
 
     setIsSubmitting(true);
     setFeedback(null);
 
     const payload = {
-      shopin_id: vendorShopinId.trim(), product_name: finalTitle.trim(), category: category,
+      shopin_id: vendorShopinId.trim(), product_name: productName.trim(), category: category,
       price_ngn: priceNgn ? parseFloat(priceNgn) : null, stock_quantity: parseInt(stockQty) || 1,
       image_url: imageUrl.trim() || null, location: locationHub, service_type: isServiceCategory ? 'service' : 'product',
       allow_direct_contact: allowDirectContact || isServiceCategory, is_pickup_available: isPickupAvailable
@@ -164,12 +167,12 @@ export default function VendorMarketplace({ marketFilter, onAddToCart, openCheck
     try {
       const res = await shopinApi.addVendorProduct(payload);
       setProducts(prev => [res.data.product, ...prev]);
-      setFeedback({ type: 'success', text: `Success! "${finalTitle}" is now live!` });
+      setFeedback({ type: 'success', text: `Success! "${productName}" is now live!` });
       resetListingForm();
     } catch (err) {
       const fallbackProd = { ...payload, id: `v-prod-${Date.now()}`, is_verified: true, contact_mode: (allowDirectContact || isServiceCategory) ? 'DIRECT' : 'MIDDLEMAN' };
       setProducts(prev => [fallbackProd, ...prev]);
-      setFeedback({ type: 'success', text: `Listed "${finalTitle}" successfully!` });
+      setFeedback({ type: 'success', text: `Listed "${productName}" successfully!` });
       resetListingForm();
     } finally {
       setIsSubmitting(false);
@@ -207,17 +210,6 @@ export default function VendorMarketplace({ marketFilter, onAddToCart, openCheck
     };
     if (onAddToCart) onAddToCart([cartItem]);
     if (openCheckout) openCheckout();
-  };
-
-  const handleRevealServiceContact = async (prod) => {
-    try {
-      if (shopinApi && shopinApi.bookServiceContact) await shopinApi.bookServiceContact({ buyer_shopin_id: 'SHP-ILR-GUEST', vendor_id: prod.vendor_id || prod.id, service_category: prod.product_name });
-      setContactRevealed(prev => ({ ...prev, [prod.id]: prod.phone_number || '08059876543' }));
-      setFeedback({ type: 'success', text: `Phone Number Unlocked!` });
-    } catch (err) {
-      setContactRevealed(prev => ({ ...prev, [prod.id]: prod.phone_number || '08059876543' }));
-      setFeedback({ type: 'success', text: `Verified! Vendor Phone Number: ${prod.phone_number || '08059876543'}` });
-    }
   };
 
   const filterTabs = ['All', 'Local Markets', 'Supermarkets', 'Restaurants', 'Foodstuff', 'Wearables', 'Electronics', 'AB&S Services', 'Mini-Services', 'Provisions'];
@@ -319,17 +311,28 @@ export default function VendorMarketplace({ marketFilter, onAddToCart, openCheck
                     )}
                   </div>
 
+                  {/* 🌟 THIS IS THE CLEANED UP SERVICES SECTION */}
                   {prod.category === 'AB&S Services' || prod.category === 'Mini-Services' || prod.contact_mode === 'DIRECT' ? (
                     <div className="pt-3 border-t border-slate-100 space-y-2">
-                      <div className="text-xs text-slate-600">Price: <span className="font-bold text-purple-900">Negotiable</span></div>
-                      {contactRevealed[prod.id] ? (
-                        <div className="p-2.5 bg-purple-50 border border-purple-200 text-purple-900 rounded-xl text-center space-y-1">
-                          <span className="text-xs font-bold block">📞 Phone Number Unlocked:</span>
-                          <a href={`tel:${contactRevealed[prod.id]}`} className="text-sm font-extrabold text-purple-700 underline block">{contactRevealed[prod.id]}</a>
+                      <div className="text-xs text-slate-600">
+                        Price: <span className="font-bold text-purple-900">
+                          {prod.price_ngn ? `₦${Number(prod.price_ngn).toLocaleString()}` : 'Negotiable'}
+                        </span>
+                      </div>
+                      
+                      {unlockedPhones[prod.id] ? (
+                        <div className="bg-emerald-100 text-emerald-900 font-bold p-3 rounded-xl text-center border border-emerald-300 shadow-sm animate-pulse">
+                          <a href={`tel:${unlockedPhones[prod.id]}`} className="font-extrabold text-lg block text-emerald-800 hover:text-emerald-600">
+                            📞 {unlockedPhones[prod.id]}
+                          </a>
+                          <p className="text-[10px] text-emerald-700 font-normal mt-1">Click number to call directly!</p>
                         </div>
                       ) : (
-                        <button onClick={() => handleRevealServiceContact(prod)} className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs py-2.5 rounded-xl cursor-pointer">
-                          📞 Unlock Phone Number & Book
+                        <button 
+                          onClick={() => handleUnlockContact(prod)}
+                          className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-xl shadow-md transition-all cursor-pointer active:scale-95"
+                        >
+                          📞 Unlock Phone Number (Free)
                         </button>
                       )}
                     </div>
@@ -402,13 +405,15 @@ export default function VendorMarketplace({ marketFilter, onAddToCart, openCheck
                 <option value="Local Markets">Local Market Goods</option>
                 <option value="Wearables">Wearables</option>
                 <option value="Electronics">Electronics</option>
+                <option value="AB&S Services">AB&S Services</option>
+                <option value="Mini-Services">Mini-Services</option>
               </select>
             </div>
           </div>
           <div><label className="text-xs font-semibold text-slate-600 block mb-1">Item Name</label><input type="text" value={productName} onChange={(e) => setProductName(e.target.value)} required className="w-full p-2.5 border rounded-xl text-xs" /></div>
           <div><label className="text-xs font-semibold text-slate-600 block mb-1">Image URL (Optional)</label><input type="url" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} className="w-full p-2.5 border rounded-xl text-xs" /></div>
           <div className="grid grid-cols-2 gap-3">
-            <div><label className="text-xs font-semibold text-slate-600 block mb-1">Price (₦ NGN)</label><input type="number" value={priceNgn} onChange={(e) => setPriceNgn(e.target.value)} required className="w-full p-2.5 border rounded-xl text-xs" /></div>
+            <div><label className="text-xs font-semibold text-slate-600 block mb-1">Price (₦ NGN)</label><input type="number" value={priceNgn} onChange={(e) => setPriceNgn(e.target.value)} className="w-full p-2.5 border rounded-xl text-xs" /></div>
             <div><label className="text-xs font-semibold text-slate-600 block mb-1">Location Hub</label><input type="text" value={locationHub} onChange={(e) => setLocationHub(e.target.value)} className="w-full p-2.5 border rounded-xl text-xs" /></div>
           </div>
           <button type="submit" disabled={isSubmitting} className="w-full bg-teal-700 text-white font-bold py-3.5 rounded-xl text-xs">Publish Listing 🔒</button>

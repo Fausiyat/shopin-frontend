@@ -12,11 +12,20 @@ const SAMPLE_ADMIN_PRODUCTS = [
 ];
 
 function AdminProductsManager({ API_URL, adminPin }) {
-  // Initialize state directly with the constant
+  // --- Existing State ---
   const [items, setItems] = useState(SAMPLE_ADMIN_PRODUCTS);
   const [editingItem, setEditingItem] = useState(null);
   const [newName, setNewName] = useState('');
   const [newPrice, setNewPrice] = useState('');
+
+  // --- NEW: Add Item State ---
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [isAdding, setIsAdding] = useState(false);
+  const [addVendorId, setAddVendorId] = useState('');
+  const [addName, setAddName] = useState('');
+  const [addCategory, setAddCategory] = useState('MINI-SERVICES');
+  const [addType, setAddType] = useState('service');
+  const [addPrice, setAddPrice] = useState('');
 
   useEffect(() => {
     fetchItems();
@@ -26,9 +35,6 @@ function AdminProductsManager({ API_URL, adminPin }) {
     try {
       const res = await axios.get(`${API_URL}/api/vendors/products`);
       const fetchedData = res.data?.data || res.data;
-      
-      // 🌟 ONLY override state if the database actually returns real items.
-      // Notice there is no "else" block, so it will never wipe out the samples!
       if (Array.isArray(fetchedData) && fetchedData.length > 0) {
         setItems(fetchedData);
       }
@@ -49,42 +55,123 @@ function AdminProductsManager({ API_URL, adminPin }) {
       setEditingItem(null);
       fetchItems();
     } catch (err) {
-      // Local UI update fallback
       setItems(prev => prev.map(item => item.id === id ? { ...item, product_name: newName, price_ngn: newPrice ? parseFloat(newPrice) : item.price_ngn } : item));
       alert("✅ Item updated locally!");
       setEditingItem(null);
     }
   };
 
+  // --- NEW: Handle Adding New Items ---
+  const handleAddNewItem = async (e) => {
+    e.preventDefault();
+    if (!addVendorId || !addName || !addCategory) return alert("Please fill the required fields!");
+    
+    setIsAdding(true);
+    try {
+      await axios.post(`${API_URL}/api/vendors/products`, {
+        shopin_id: addVendorId.trim(),
+        product_name: addName.trim(),
+        category: addCategory,
+        service_type: addType,
+        price_ngn: addPrice ? parseFloat(addPrice) : 0
+      }, {
+        headers: { 'x-admin-pin': adminPin }
+      });
+      alert("🎉 Successfully added to the marketplace!");
+      setAddVendorId(''); setAddName(''); setAddPrice(''); setShowAddForm(false);
+      fetchItems();
+    } catch (err) {
+      alert("❌ Error adding item: " + (err.response?.data?.error || err.message));
+    } finally {
+      setIsAdding(false);
+    }
+  };
+
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
+      
+      {/* --- NEW ADD ITEM FORM --- */}
+      <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
+        {!showAddForm ? (
+          <button 
+            onClick={() => setShowAddForm(true)} 
+            className="w-full bg-slate-900 text-white font-bold py-2.5 rounded-lg hover:bg-slate-800 transition cursor-pointer"
+          >
+            ➕ Add New Product / Service
+          </button>
+        ) : (
+          <form onSubmit={handleAddNewItem} className="space-y-3">
+            <div className="flex justify-between items-center border-b pb-2 mb-2">
+              <h4 className="font-bold text-sm text-slate-800">Launch New Marketplace Item</h4>
+              <button type="button" onClick={() => setShowAddForm(false)} className="text-red-500 font-bold text-xs cursor-pointer">✕ Cancel</button>
+            </div>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Vendor ShopIn ID *</label>
+                <input type="text" value={addVendorId} onChange={e => setAddVendorId(e.target.value)} placeholder="e.g. VND-ILR-1234" required className="w-full p-2 border rounded-lg text-xs" />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Item / Service Name *</label>
+                <input type="text" value={addName} onChange={e => setAddName(e.target.value)} placeholder="e.g. Home Deep Cleaning" required className="w-full p-2 border rounded-lg text-xs" />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Category *</label>
+                <input type="text" value={addCategory} onChange={e => setAddCategory(e.target.value)} placeholder="e.g. MINI-SERVICES" required className="w-full p-2 border rounded-lg text-xs" />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Type *</label>
+                <select value={addType} onChange={e => setAddType(e.target.value)} className="w-full p-2 border rounded-lg text-xs bg-white">
+                  <option value="product">Standard Product (Shopping Cart)</option>
+                  <option value="service">Micro-Service (Unlock Phone #)</option>
+                </select>
+              </div>
+              <div className="sm:col-span-2">
+                <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Price (₦) - Leave blank for "Negotiable"</label>
+                <input type="number" value={addPrice} onChange={e => setAddPrice(e.target.value)} placeholder="e.g. 5000" className="w-full p-2 border rounded-lg text-xs" />
+              </div>
+            </div>
+            <button type="submit" disabled={isAdding} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-lg transition disabled:opacity-50 cursor-pointer mt-2">
+              {isAdding ? 'Adding...' : 'Publish to Marketplace 🚀'}
+            </button>
+          </form>
+        )}
+      </div>
+
+      <hr className="border-slate-200" />
+
+      {/* --- EXISTING ITEMS LIST --- */}
       {items.length === 0 ? (
         <p className="text-xs text-slate-400 text-center py-6">No marketplace items found.</p>
       ) : (
-        items.map(item => (
-          <div key={item.id} className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between text-xs gap-3">
-            <div>
-              <span className="font-bold text-slate-900 block">{item.product_name}</span>
-              <span className="text-[10px] text-slate-500 uppercase font-semibold">Category: {item.category} • Price: ₦{Number(item.price_ngn || 0).toLocaleString()}</span>
-            </div>
-
-            {editingItem === item.id ? (
-              <div className="flex items-center gap-2">
-                <input type="text" value={newName} onChange={e => setNewName(e.target.value)} placeholder="New Name" className="p-1 border rounded text-xs" />
-                <input type="number" value={newPrice} onChange={e => setNewPrice(e.target.value)} placeholder="New Price" className="w-20 p-1 border rounded text-xs" />
-                <button onClick={() => handleSaveEdit(item.id)} className="bg-emerald-600 text-white px-3 py-1 rounded font-bold cursor-pointer">Save</button>
-                <button onClick={() => setEditingItem(null)} className="bg-slate-300 px-2 py-1 rounded cursor-pointer">Cancel</button>
+        <div className="space-y-2">
+          {items.map(item => (
+            <div key={item.id} className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between text-xs gap-3">
+              <div>
+                <span className="font-bold text-slate-900 block">{item.product_name}</span>
+                <span className="text-[10px] text-slate-500 font-semibold">
+                  <span className="uppercase text-indigo-600">{item.service_type || 'product'}</span> • {item.category} • Price: {item.price_ngn ? `₦${Number(item.price_ngn).toLocaleString()}` : 'Negotiable'}
+                </span>
               </div>
-            ) : (
-              <button 
-                onClick={() => { setEditingItem(item.id); setNewName(item.product_name); setNewPrice(item.price_ngn || ''); }} 
-                className="bg-slate-900 text-white font-bold px-3 py-1.5 rounded-lg cursor-pointer"
-              >
-                Edit Item ✍️
-              </button>
-            )}
-          </div>
-        ))
+
+              {editingItem === item.id ? (
+                <div className="flex items-center gap-2">
+                  <input type="text" value={newName} onChange={e => setNewName(e.target.value)} placeholder="New Name" className="p-1 border rounded text-xs w-32" />
+                  <input type="number" value={newPrice} onChange={e => setNewPrice(e.target.value)} placeholder="Price (0 = Neg.)" className="w-24 p-1 border rounded text-xs" />
+                  <button onClick={() => handleSaveEdit(item.id)} className="bg-emerald-600 text-white px-3 py-1 rounded font-bold cursor-pointer">Save</button>
+                  <button onClick={() => setEditingItem(null)} className="bg-slate-300 px-2 py-1 rounded cursor-pointer">Cancel</button>
+                </div>
+              ) : (
+                <button 
+                  onClick={() => { setEditingItem(item.id); setNewName(item.product_name); setNewPrice(item.price_ngn || ''); }} 
+                  className="bg-slate-900 hover:bg-slate-800 text-white font-bold px-3 py-1.5 rounded-lg cursor-pointer whitespace-nowrap"
+                >
+                  Edit Item ✍️
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
       )}
     </div>
   );

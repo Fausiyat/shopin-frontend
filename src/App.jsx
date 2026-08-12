@@ -367,10 +367,12 @@ function App() {
                 <div className="bg-blue-50 rounded-2xl border border-blue-200 p-5 text-blue-900">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-xs font-bold uppercase tracking-wider bg-blue-200 text-blue-800 px-2 py-0.5 rounded-full">Batch Shuttle</span>
-                    <span className="text-xs font-semibold text-blue-700">Next Run: 12:00 PM</span>
+                    <span className="text-xs font-semibold text-blue-700">2:00 PM - 6:00 PM</span>
                   </div>
-                  <h4 className="font-bold text-sm">Unilorin / Tanke Shuttle Active</h4>
-                  <p className="text-xs text-blue-700 mt-1 mb-3">Pool delivery fees with nearby orders to lock in shared zone rates!</p>
+                  <h4 className="font-bold text-sm">Express Delivery Corridors</h4>
+                  <p className="text-xs text-blue-700 mt-1 mb-3">
+                    Join a route anytime! To keep fees low, batched orders are dispatched strictly between <b>2:00 PM and 6:00 PM</b> when the shuttle fills up.
+                  </p>
                   <button onClick={() => setActiveTab('shuttles')} className="w-full bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold py-2 px-3 rounded-xl transition cursor-pointer">
                     View Available Corridors ➔
                   </button>

@@ -21,6 +21,54 @@ export default function DeliveryPooling({ activeOrderId, onShuttleSelected }) {
     return 1800; 
   };
 
+  // 🌟 Your standard everyday routes restored!
+  const getSampleShuttles = () => [
+    {
+      id: 'ROUTE-1',
+      pool_code: 'POL-ALHIKMAH-01',
+      route_name: 'Mandate Market ➔ Al-Hikmah / Apalara Route',
+      origin_market: 'Mandate Market',
+      destination_zone: 'Al-Hikmah / Apalara',
+      max_capacity: 10,
+      current_orders: 4,
+      base_shuttle_fee: 1300, 
+      status: 'OPEN'
+    },
+    {
+      id: 'ROUTE-2',
+      pool_code: 'POL-IREWOLEDE-01',
+      route_name: 'Mandate Market ➔ Irewolede / Unity Road Route',
+      origin_market: 'Mandate Market',
+      destination_zone: 'Irewolede / Unity',
+      max_capacity: 10,
+      current_orders: 2,
+      base_shuttle_fee: 1800, 
+      status: 'OPEN'
+    },
+    {
+      id: 'ROUTE-3',
+      pool_code: 'POL-UNILORIN-01',
+      route_name: 'Mandate Market ➔ Tanke / Unilorin Gate Route',
+      origin_market: 'Mandate Market',
+      destination_zone: 'Tanke / Unilorin',
+      max_capacity: 10,
+      current_orders: 7,
+      base_shuttle_fee: 1800, 
+      status: 'OPEN'
+    },
+    {
+      id: 'ROUTE-4',
+      pool_code: 'POL-CHALLENGE-01',
+      route_name: 'Mandate Market ➔ Challenge / Fate Route',
+      origin_market: 'Mandate Market',
+      destination_zone: 'Challenge / Fate',
+      max_capacity: 10,
+      current_orders: 3,
+      base_shuttle_fee: 1800, 
+      status: 'OPEN'
+    }
+  ];
+
   const fetchDeliveryPools = async () => {
     try {
       setLoading(true);
@@ -29,19 +77,19 @@ export default function DeliveryPooling({ activeOrderId, onShuttleSelected }) {
       const res = await shopinApi.getActiveDeliveryPools();
       const data = res.data ? res.data : res;
 
-      if (Array.isArray(data)) {
+      if (Array.isArray(data) && data.length > 0) {
         const poolsWithDynamicRates = data.map(pool => ({
           ...pool,
           base_shuttle_fee: getZoneFee(pool.route_name)
         }));
         setDeliveryPools(poolsWithDynamicRates); 
       } else {
-        setDeliveryPools([]);
+        // If DB is empty, default to your standard routes
+        setDeliveryPools(getSampleShuttles());
       }
     } catch (err) {
-      console.warn('Failed to fetch live delivery pools from backend:', err);
-      setError('Unable to fetch live delivery pools right now.');
-      setDeliveryPools([]); 
+      console.warn('Failed to fetch live delivery pools, using standards:', err);
+      setDeliveryPools(getSampleShuttles()); 
     } finally {
       setLoading(false);
     }
@@ -126,78 +174,72 @@ export default function DeliveryPooling({ activeOrderId, onShuttleSelected }) {
         </div>
       )}
 
-      {deliveryPools.length === 0 ? (
-        <div className="p-8 border border-dashed border-slate-300 bg-white rounded-xl text-center text-slate-500 text-xs">
-          No active delivery shuttles available right now. Check back later!
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {deliveryPools.map((pool) => {
-            const maxCap = Number(pool.max_capacity || 10);
-            const currentOrders = Number(pool.current_orders || 0);
-            const capacityLeft = Math.max(0, maxCap - currentOrders);
-            const progressPct = Math.min(100, Math.round((currentOrders / maxCap) * 100));
-            const displayFee = pool.base_shuttle_fee || getZoneFee(pool.route_name);
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {deliveryPools.map((pool) => {
+          const maxCap = Number(pool.max_capacity || 10);
+          const currentOrders = Number(pool.current_orders || 0);
+          const capacityLeft = Math.max(0, maxCap - currentOrders);
+          const progressPct = Math.min(100, Math.round((currentOrders / maxCap) * 100));
+          const displayFee = pool.base_shuttle_fee || getZoneFee(pool.route_name);
 
-            return (
-              <div 
-                key={pool.id} 
-                className="border border-slate-200 rounded-xl p-5 bg-white shadow-xs hover:shadow-md transition flex flex-col justify-between"
-              >
-                <div>
-                  <div className="flex justify-between items-start mb-2 gap-2">
-                    <span className="text-xs font-mono font-bold px-2 py-0.5 bg-slate-100 text-slate-700 rounded border border-slate-200">
-                      {pool.pool_code}
-                    </span>
-                    <span className={`text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap ${
-                      capacityLeft === 0 
-                        ? 'bg-slate-100 text-slate-600' 
-                        : 'bg-blue-100 text-blue-800'
-                    }`}>
-                      {capacityLeft > 0 ? `${capacityLeft} seat${capacityLeft > 1 ? 's' : ''} left` : 'Shuttle Full'}
-                    </span>
-                  </div>
-
-                  <h3 className="font-bold text-slate-900 text-sm sm:text-base leading-tight mb-1">
-                    {pool.route_name}
-                  </h3>
-                  <p className="text-xs text-slate-500 mb-3 font-medium">
-                    📍 {pool.origin_market || 'Mandate Market'} ➔ {pool.destination_zone}
-                  </p>
-
-                  <div className="w-full bg-slate-100 rounded-full h-2 mb-2 overflow-hidden">
-                    <div 
-                      className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
-                      style={{ width: `${progressPct}%` }}
-                    />
-                  </div>
-                  <div className="flex justify-between text-xs text-slate-500 mb-4">
-                    <span>{currentOrders} of {maxCap} batched</span>
-                    <span className="font-semibold text-blue-700">{progressPct}% capacity</span>
-                  </div>
+          return (
+            <div 
+              key={pool.id} 
+              className="border border-slate-200 rounded-xl p-5 bg-white shadow-xs hover:shadow-md transition flex flex-col justify-between"
+            >
+              <div>
+                <div className="flex justify-between items-start mb-2 gap-2">
+                  <span className="text-xs font-mono font-bold px-2 py-0.5 bg-slate-100 text-slate-700 rounded border border-slate-200">
+                    {pool.pool_code}
+                  </span>
+                  <span className={`text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap ${
+                    capacityLeft === 0 
+                      ? 'bg-slate-100 text-slate-600' 
+                      : 'bg-blue-100 text-blue-800'
+                  }`}>
+                    {capacityLeft > 0 ? `${capacityLeft} seat${capacityLeft > 1 ? 's' : ''} left` : 'Shuttle Full'}
+                  </span>
                 </div>
 
-                <div className="flex justify-between items-center pt-3 border-t border-slate-100">
-                  <div>
-                    <span className="text-xs text-slate-400 block font-medium">Zone Shuttle Rate</span>
-                    <span className="text-base sm:text-lg font-extrabold text-blue-700">
-                      ₦{Number(displayFee).toLocaleString()}
-                    </span>
-                  </div>
+                <h3 className="font-bold text-slate-900 text-sm sm:text-base leading-tight mb-1">
+                  {pool.route_name}
+                </h3>
+                <p className="text-xs text-slate-500 mb-3 font-medium">
+                  📍 {pool.origin_market || 'Mandate Market'} ➔ {pool.destination_zone}
+                </p>
 
-                  <button
-                    onClick={() => handleJoinShuttle(pool)}
-                    disabled={capacityLeft <= 0 || joiningId === pool.id}
-                    className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-4 py-2 rounded-lg transition disabled:bg-slate-300 disabled:cursor-not-allowed cursor-pointer"
-                  >
-                    {joiningId === pool.id ? 'Boarding...' : capacityLeft > 0 ? 'Batch Delivery' : 'Full'}
-                  </button>
+                <div className="w-full bg-slate-100 rounded-full h-2 mb-2 overflow-hidden">
+                  <div 
+                    className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
+                    style={{ width: `${progressPct}%` }}
+                  />
+                </div>
+                <div className="flex justify-between text-xs text-slate-500 mb-4">
+                  <span>{currentOrders} of {maxCap} batched</span>
+                  <span className="font-semibold text-blue-700">{progressPct}% capacity</span>
                 </div>
               </div>
-            );
-          })}
-        </div>
-      )}
+
+              <div className="flex justify-between items-center pt-3 border-t border-slate-100">
+                <div>
+                  <span className="text-xs text-slate-400 block font-medium">Zone Shuttle Rate</span>
+                  <span className="text-base sm:text-lg font-extrabold text-blue-700">
+                    ₦{Number(displayFee).toLocaleString()}
+                  </span>
+                </div>
+
+                <button
+                  onClick={() => handleJoinShuttle(pool)}
+                  disabled={capacityLeft <= 0 || joiningId === pool.id}
+                  className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-4 py-2 rounded-lg transition disabled:bg-slate-300 disabled:cursor-not-allowed cursor-pointer"
+                >
+                  {joiningId === pool.id ? 'Boarding...' : capacityLeft > 0 ? 'Batch Delivery' : 'Full'}
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

@@ -236,6 +236,111 @@ function PendingVendorsManager({ API_URL, adminPin }) {
   );
 }
 
+// 🌟 NEW CATEGORY MANAGER COMPONENT
+function CategoryManager({ API_URL, adminPin }) {
+  const [categories, setCategories] = useState([]);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [feedback, setFeedback] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    fetchCategories();
+  }, []);
+
+  const fetchCategories = async () => {
+    try {
+      const res = await axios.get(`${API_URL}/api/marketplace/categories`);
+      if (res.data && res.data.categories) {
+        setCategories(res.data.categories);
+      }
+    } catch (err) {
+      console.warn("Failed to load categories", err);
+    }
+  };
+
+  const handleAddCategory = async (e) => {
+    e.preventDefault();
+    if (!newCategoryName.trim()) return;
+
+    setLoading(true);
+    setFeedback(null);
+
+    try {
+      const response = await axios.post(
+        `${API_URL}/api/admin/categories`,
+        { category_name: newCategoryName.trim() },
+        { headers: { 'x-admin-pin': adminPin } }
+      );
+
+      setFeedback({ type: 'success', text: response.data.message });
+      setNewCategoryName('');
+      fetchCategories();
+    } catch (err) {
+      setFeedback({ 
+        type: 'error', 
+        text: err.response?.data?.error || 'Failed to create category.' 
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs max-w-xl mx-auto space-y-4">
+      <div>
+        <h3 className="text-sm font-black text-slate-900 flex items-center gap-2">
+          <span>📂</span> Manage Marketplace Categories
+        </h3>
+        <p className="text-xs text-slate-500 mt-0.5">
+          Create and view dynamic service or product tabs (e.g., "House Agents", "Gas Refill").
+        </p>
+      </div>
+
+      {feedback && (
+        <div className={`p-2.5 rounded-xl text-xs font-semibold ${
+          feedback.type === 'success' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : 'bg-red-100 text-red-800'
+        }`}>
+          {feedback.text}
+        </div>
+      )}
+
+      <form onSubmit={handleAddCategory} className="flex gap-2">
+        <input
+          type="text"
+          placeholder="e.g. House Agents"
+          value={newCategoryName}
+          onChange={(e) => setNewCategoryName(e.target.value)}
+          className="flex-1 p-2.5 border border-slate-300 rounded-xl text-xs outline-none focus:border-blue-500 font-medium bg-slate-50"
+          required
+        />
+        <button
+          type="submit"
+          disabled={loading}
+          className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2.5 rounded-xl text-xs transition cursor-pointer disabled:opacity-50 whitespace-nowrap shadow-xs"
+        >
+          {loading ? 'Adding...' : '➕ Add Category'}
+        </button>
+      </form>
+
+      <div className="pt-2 border-t border-slate-100">
+        <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-2">
+          Active Marketplace Tabs ({categories.length})
+        </span>
+        <div className="flex flex-wrap gap-1.5">
+          {categories.map((cat, idx) => (
+            <span 
+              key={idx} 
+              className="text-xs font-bold bg-slate-100 text-slate-700 px-3 py-1 rounded-lg border border-slate-200"
+            >
+              🏷️ {cat}
+            </span>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function AdminDashboard() {
   const [activeAdminTab, setActiveAdminTab] = useState('locations'); 
   const [feedback, setFeedback] = useState(null);
@@ -546,6 +651,7 @@ export default function AdminDashboard() {
         <div className="flex flex-wrap gap-2">
           <button onClick={() => setActiveAdminTab('deposits')} className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${activeAdminTab === 'deposits' ? 'bg-orange-600' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}>💳 Deposits</button>
           <button onClick={() => setActiveAdminTab('locations')} className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${activeAdminTab === 'locations' ? 'bg-indigo-600' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}>📍 Locations</button>
+          <button onClick={() => setActiveAdminTab('categories')} className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${activeAdminTab === 'categories' ? 'bg-blue-600' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}>📂 Categories</button>
           <button onClick={() => setActiveAdminTab('products')} className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${activeAdminTab === 'products' ? 'bg-teal-600' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}>🛍️ Manage Items</button>
           <button onClick={() => setActiveAdminTab('users')} className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${activeAdminTab === 'users' ? 'bg-purple-600' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}>👥 Users</button>
           <button onClick={() => setActiveAdminTab('vendors')} className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${activeAdminTab === 'vendors' ? 'bg-rose-600' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}>🏪 Vendors</button>
@@ -618,6 +724,11 @@ export default function AdminDashboard() {
 
           </div>
         </div>
+      )}
+
+      {/* NEW TAB: CATEGORIES MANAGER */}
+      {activeAdminTab === 'categories' && (
+        <CategoryManager API_URL={API_URL} adminPin={adminPin} />
       )}
 
       {/* TAB: OPAY DEPOSITS */}

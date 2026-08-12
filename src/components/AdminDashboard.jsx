@@ -864,11 +864,26 @@ export default function AdminDashboard() {
             <div>
               <label className="text-xs font-semibold text-slate-600 uppercase tracking-wider block mb-1">Measurement Unit</label>
               <select value={unit} onChange={(e) => setUnit(e.target.value)} className="w-full p-2.5 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 outline-none bg-white">
-                <option value="plate">Plate (Meals)</option>
-                <option value="pack">Pack</option>
-                <option value="unit">Unit</option>
-                <option value="paint_rubber">Paint Rubber</option>
                 <option value="full_bag">Full Bag (50kg)</option>
+                <option value="half_bag">1/2 Bag (Half Bag)</option>
+                <option value="1/4_bag">1/4 Bag (Quarter Bag)</option>
+                <option value="1/8_bag">1/8 Bag</option>
+                <option value="paint_rubber">Paint Rubber</option>
+                <option value="mudu">Mudu / Module</option>
+                <option value="carton">Carton</option>
+                <option value="pack">Pack</option>
+                <option value="roll">Roll (Beverages / Sachets)</option>
+                <option value="refill">Refill (Water / Gas)</option>
+                <option value="25_litres">25 Litres (Keg)</option>
+                <option value="12.5_litres">12.5 Litres</option>
+                <option value="5_litres">5 Litres</option>
+                <option value="75cl">75cl Bottle</option>
+                <option value="kg">1 Kilogram (1kg)</option>
+                <option value="1/2kg">1/2 Kilogram (0.5kg)</option>
+                <option value="tuber">Tuber (Yam)</option>
+                <option value="pieces">Pieces (Wara, Ponmo)</option>
+                <option value="plate">Plate (Meals)</option>
+                <option value="unit">Unit</option>
               </select>
             </div>
           </div>

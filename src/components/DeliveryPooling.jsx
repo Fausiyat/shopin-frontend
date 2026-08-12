@@ -21,7 +21,7 @@ export default function DeliveryPooling({ activeOrderId, onShuttleSelected }) {
     return 1800; 
   };
 
-  // 🌟 Your standard everyday routes restored!
+  // 🌟 Set current_orders to 0 so they all start completely empty!
   const getSampleShuttles = () => [
     {
       id: 'ROUTE-1',
@@ -30,7 +30,7 @@ export default function DeliveryPooling({ activeOrderId, onShuttleSelected }) {
       origin_market: 'Mandate Market',
       destination_zone: 'Al-Hikmah / Apalara',
       max_capacity: 10,
-      current_orders: 4,
+      current_orders: 0, 
       base_shuttle_fee: 1300, 
       status: 'OPEN'
     },
@@ -41,7 +41,7 @@ export default function DeliveryPooling({ activeOrderId, onShuttleSelected }) {
       origin_market: 'Mandate Market',
       destination_zone: 'Irewolede / Unity',
       max_capacity: 10,
-      current_orders: 2,
+      current_orders: 0, 
       base_shuttle_fee: 1800, 
       status: 'OPEN'
     },
@@ -52,7 +52,7 @@ export default function DeliveryPooling({ activeOrderId, onShuttleSelected }) {
       origin_market: 'Mandate Market',
       destination_zone: 'Tanke / Unilorin',
       max_capacity: 10,
-      current_orders: 7,
+      current_orders: 0, 
       base_shuttle_fee: 1800, 
       status: 'OPEN'
     },
@@ -63,7 +63,7 @@ export default function DeliveryPooling({ activeOrderId, onShuttleSelected }) {
       origin_market: 'Mandate Market',
       destination_zone: 'Challenge / Fate',
       max_capacity: 10,
-      current_orders: 3,
+      current_orders: 0, 
       base_shuttle_fee: 1800, 
       status: 'OPEN'
     }
@@ -84,7 +84,6 @@ export default function DeliveryPooling({ activeOrderId, onShuttleSelected }) {
         }));
         setDeliveryPools(poolsWithDynamicRates); 
       } else {
-        // If DB is empty, default to your standard routes
         setDeliveryPools(getSampleShuttles());
       }
     } catch (err) {
@@ -146,7 +145,6 @@ export default function DeliveryPooling({ activeOrderId, onShuttleSelected }) {
 
   return (
     <div className="space-y-6">
-      {/* 🌟 UPGRADED Header Notification Banner with Warning */}
       <div className="bg-blue-50 border border-blue-200 p-4 sm:p-5 rounded-2xl shadow-sm">
         <h2 className="text-base sm:text-lg font-extrabold text-blue-950 flex items-center gap-2">
           <span>🚀</span> Express Delivery Corridors
@@ -155,7 +153,6 @@ export default function DeliveryPooling({ activeOrderId, onShuttleSelected }) {
           Batch your delivery route with other buyers from Mandate Market to lower your dispatch fee to shared zone rates (₦1,300 - ₦1,800).
         </p>
         
-        {/* 🔥 The Warning Banner */}
         <div className="mt-4 bg-blue-100/80 border border-blue-300 p-3 rounded-xl flex items-start gap-3">
           <span className="text-xl">⚠️</span>
           <div className="text-[11px] sm:text-xs text-blue-900 font-semibold leading-relaxed space-y-1">

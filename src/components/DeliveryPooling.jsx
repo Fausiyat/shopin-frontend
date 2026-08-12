@@ -21,7 +21,7 @@ export default function DeliveryPooling({ activeOrderId, onShuttleSelected }) {
     return 1800; 
   };
 
-  // 🌟 Set current_orders to 0 so they all start completely empty!
+  // 🌟 Max capacity reduced to 5 seats!
   const getSampleShuttles = () => [
     {
       id: 'ROUTE-1',
@@ -29,7 +29,7 @@ export default function DeliveryPooling({ activeOrderId, onShuttleSelected }) {
       route_name: 'Mandate Market ➔ Al-Hikmah / Apalara Route',
       origin_market: 'Mandate Market',
       destination_zone: 'Al-Hikmah / Apalara',
-      max_capacity: 10,
+      max_capacity: 5,
       current_orders: 0, 
       base_shuttle_fee: 1300, 
       status: 'OPEN'
@@ -40,7 +40,7 @@ export default function DeliveryPooling({ activeOrderId, onShuttleSelected }) {
       route_name: 'Mandate Market ➔ Irewolede / Unity Road Route',
       origin_market: 'Mandate Market',
       destination_zone: 'Irewolede / Unity',
-      max_capacity: 10,
+      max_capacity: 5,
       current_orders: 0, 
       base_shuttle_fee: 1800, 
       status: 'OPEN'
@@ -51,7 +51,7 @@ export default function DeliveryPooling({ activeOrderId, onShuttleSelected }) {
       route_name: 'Mandate Market ➔ Tanke / Unilorin Gate Route',
       origin_market: 'Mandate Market',
       destination_zone: 'Tanke / Unilorin',
-      max_capacity: 10,
+      max_capacity: 5,
       current_orders: 0, 
       base_shuttle_fee: 1800, 
       status: 'OPEN'
@@ -62,7 +62,7 @@ export default function DeliveryPooling({ activeOrderId, onShuttleSelected }) {
       route_name: 'Mandate Market ➔ Challenge / Fate Route',
       origin_market: 'Mandate Market',
       destination_zone: 'Challenge / Fate',
-      max_capacity: 10,
+      max_capacity: 5,
       current_orders: 0, 
       base_shuttle_fee: 1800, 
       status: 'OPEN'
@@ -173,7 +173,7 @@ export default function DeliveryPooling({ activeOrderId, onShuttleSelected }) {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {deliveryPools.map((pool) => {
-          const maxCap = Number(pool.max_capacity || 10);
+          const maxCap = Number(pool.max_capacity || 5); // Fallback changed to 5 as well to match
           const currentOrders = Number(pool.current_orders || 0);
           const capacityLeft = Math.max(0, maxCap - currentOrders);
           const progressPct = Math.min(100, Math.round((currentOrders / maxCap) * 100));

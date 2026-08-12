@@ -25,6 +25,11 @@ function AdminProductsManager({ API_URL, adminPin }) {
   const [addType, setAddType] = useState('service');
   const [addPrice, setAddPrice] = useState('');
 
+  // 🌟 EXISTING POOLS STATE
+  const [existingPools, setExistingPools] = useState([]);
+  const [editingPoolId, setEditingPoolId] = useState(null);
+  const [editPoolData, setEditPoolData] = useState({});
+
   useEffect(() => {
     fetchItems();
   }, []);
@@ -295,7 +300,41 @@ export default function AdminDashboard() {
   useEffect(() => {
     if (activeAdminTab === 'orders') fetchPendingOrders();
     if (activeAdminTab === 'deposits') fetchPendingDeposits();
+    // 🌟 ADD THIS LINE:
+    if (activeAdminTab === 'pools') fetchPools();
   }, [activeAdminTab]);
+
+  // 🌟 ADD THIS FUNCTION RIGHT BELOW IT:
+  const fetchPools = async () => {
+    try {
+      const res = await axios.get(`${API_URL}/api/pools`);
+      setExistingPools(res.data);
+    } catch (err) {
+      console.warn("Failed to fetch pools");
+    }
+  };
+
+  const handleDeletePool = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this food pool?")) return;
+    try {
+      await axios.delete(`${API_URL}/api/admin/pools/${id}`, { headers: { 'x-admin-pin': adminPin } });
+      setFeedback({ type: 'success', text: 'Pool deleted successfully!' });
+      fetchPools(); // Refresh list
+    } catch (err) {
+      setFeedback({ type: 'error', text: 'Failed to delete pool.' });
+    }
+  };
+
+  const handleSavePoolEdit = async (id) => {
+    try {
+      await axios.put(`${API_URL}/api/admin/pools/${id}`, editPoolData, { headers: { 'x-admin-pin': adminPin } });
+      setFeedback({ type: 'success', text: 'Pool updated successfully!' });
+      setEditingPoolId(null);
+      fetchPools(); // Refresh list
+    } catch (err) {
+      setFeedback({ type: 'error', text: 'Failed to update pool.' });
+    }
+  };
 
   const fetchLocations = async () => {
     try {
@@ -436,7 +475,7 @@ export default function AdminDashboard() {
     }
   };
 
-  // 🌟 NEW: Handle Food Pool Creation
+// 🌟 FIX: Updated to use direct Axios so it successfully saves to your Neon Database!
   const handleCreatePool = async (e) => {
     e.preventDefault();
     if (!poolItemName || !poolPricePerSlot || !poolTotalSlots) return;
@@ -447,24 +486,19 @@ export default function AdminDashboard() {
       item_name: poolItemName.trim(),
       target_item_name: poolTargetItem.trim() || poolItemName.trim(),
       price_per_slot: parseFloat(poolPricePerSlot),
-      unit_price: parseFloat(poolPricePerSlot),
       total_slots: parseInt(poolTotalSlots),
-      target_units: parseInt(poolTotalSlots),
-      filled_slots: 0,
-      current_units: 0,
-      unit_label: poolUnitLabel.trim() || 'Slot',
-      sourcing_market: poolMarket,
-      location: poolMarket
+      sourcing_market: poolMarket
     };
 
     try {
-      if (shopinApi && shopinApi.createPool) {
-        await shopinApi.createPool(payload, adminPin);
-      }
+      await axios.post(`${API_URL}/api/admin/pools`, payload, {
+        headers: { 'x-admin-pin': adminPin }
+      });
+      
       setFeedback({ type: 'success', text: `Food Pool "${poolItemName}" launched successfully!` });
       setPoolItemName(''); setPoolTargetItem(''); setPoolPricePerSlot(''); setPoolTotalSlots(''); setPoolUnitLabel('');
     } catch (err) {
-      setFeedback({ type: 'success', text: `Created food pool "${poolItemName}" locally!` });
+      setFeedback({ type: 'error', text: `Failed to create pool: ${err.response?.data?.error || err.message}` });
     } finally {
       setIsSubmitting(false);
     }
@@ -776,56 +810,110 @@ export default function AdminDashboard() {
       )}
 
       {/* 🌟 NEW TAB: POOLS (FOOD POOLING MANAGER) */}
+      {/* 🌟 NEW TAB: POOLS (FOOD POOLING MANAGER) */}
       {activeAdminTab === 'pools' && (
-        <form onSubmit={handleCreatePool} className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs max-w-xl mx-auto space-y-4">
-          <h3 className="font-extrabold text-slate-900 text-base border-b border-slate-100 pb-2 flex items-center gap-2">
-            <span>🤝</span> Launch New Food Pool
-          </h3>
-          <p className="text-xs text-slate-500 mb-4">Create a new bulk buying pool for customers to share costs directly in the marketplace.</p>
+        <div className="max-w-4xl mx-auto space-y-6">
+          <form onSubmit={handleCreatePool} className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-4">
+            <h3 className="font-extrabold text-slate-900 text-base border-b border-slate-100 pb-2 flex items-center gap-2">
+              <span>🤝</span> Launch New Food Pool
+            </h3>
+            <p className="text-xs text-slate-500 mb-4">Create a new bulk buying pool for customers to share costs directly in the marketplace.</p>
 
-          <div className="space-y-3">
-            <div>
-              <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Display Title (e.g. 50kg Bag of Foreign Rice Share) *</label>
-              <input type="text" value={poolItemName} onChange={e => setPoolItemName(e.target.value)} required className="w-full p-2.5 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-orange-500 outline-none" />
+            <div className="space-y-3">
+              <div>
+                <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Display Title (e.g. 50kg Bag of Foreign Rice Share) *</label>
+                <input type="text" value={poolItemName} onChange={e => setPoolItemName(e.target.value)} required className="w-full p-2.5 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-orange-500 outline-none" />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Target Item Name *</label>
+                  <input type="text" value={poolTargetItem} onChange={e => setPoolTargetItem(e.target.value)} placeholder="e.g. Foreign Rice" required className="w-full p-2.5 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-orange-500 outline-none" />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Sourcing Market *</label>
+                  <select value={poolMarket} onChange={e => setPoolMarket(e.target.value)} className="w-full p-2.5 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-orange-500 outline-none bg-white">
+                    <option value="Mandate Market">Mandate Market</option>
+                    <option value="Ipata Market">Ipata Market</option>
+                    <option value="Sawmill Market">Sawmill Market</option>
+                    <option value="Tanke Hub">Tanke Hub</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Price Per Slot (₦) *</label>
+                  <input type="number" value={poolPricePerSlot} onChange={e => setPoolPricePerSlot(e.target.value)} required placeholder="e.g. 18500" className="w-full p-2.5 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-orange-500 outline-none" />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Total Target Slots *</label>
+                  <input type="number" value={poolTotalSlots} onChange={e => setPoolTotalSlots(e.target.value)} required placeholder="e.g. 4" className="w-full p-2.5 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-orange-500 outline-none" />
+                </div>
+              </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Target Item Name *</label>
-                <input type="text" value={poolTargetItem} onChange={e => setPoolTargetItem(e.target.value)} placeholder="e.g. Foreign Rice" required className="w-full p-2.5 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-orange-500 outline-none" />
-              </div>
-              <div>
-                <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Sourcing Market *</label>
-                <select value={poolMarket} onChange={e => setPoolMarket(e.target.value)} className="w-full p-2.5 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-orange-500 outline-none bg-white">
-                  <option value="Mandate Market">Mandate Market</option>
-                  <option value="Ipata Market">Ipata Market</option>
-                  <option value="Sawmill Market">Sawmill Market</option>
-                  <option value="Tanke Hub">Tanke Hub</option>
-                </select>
-              </div>
-            </div>
+            <button type="submit" disabled={isSubmitting} className="w-full bg-orange-600 hover:bg-orange-700 text-white font-bold py-3.5 rounded-xl text-xs transition cursor-pointer shadow-md mt-2 disabled:opacity-50">
+              {isSubmitting ? 'Creating...' : 'Publish Food Pool 🚀'}
+            </button>
+          </form>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Price Per Slot (₦) *</label>
-                <input type="number" value={poolPricePerSlot} onChange={e => setPoolPricePerSlot(e.target.value)} required placeholder="e.g. 18500" className="w-full p-2.5 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-orange-500 outline-none" />
-              </div>
-              <div>
-                <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Total Target Slots *</label>
-                <input type="number" value={poolTotalSlots} onChange={e => setPoolTotalSlots(e.target.value)} required placeholder="e.g. 4" className="w-full p-2.5 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-orange-500 outline-none" />
-              </div>
-            </div>
+          {/* 🌟 MANAGE EXISTING POOLS */}
+          <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-4">
+            <h3 className="font-extrabold text-slate-900 text-base border-b border-slate-100 pb-2">
+              Manage Active Food Pools
+            </h3>
+            {existingPools.length === 0 ? (
+              <p className="text-xs text-slate-400 text-center py-4">No active food pools found.</p>
+            ) : (
+              <div className="space-y-3">
+                {existingPools.map(pool => (
+                  <div key={pool.id} className="p-4 bg-slate-50 border border-slate-200 rounded-xl text-xs flex flex-col sm:flex-row justify-between sm:items-center gap-3">
+                    
+                    {editingPoolId === pool.id ? (
+                      <div className="flex-1 space-y-2">
+                        <input type="text" value={editPoolData.item_name || ''} onChange={e => setEditPoolData({...editPoolData, item_name: e.target.value})} className="w-full p-2 border rounded" placeholder="Pool Title" />
+                        <div className="flex gap-2">
+                          <input type="number" value={editPoolData.price_per_slot || ''} onChange={e => setEditPoolData({...editPoolData, price_per_slot: e.target.value})} className="w-1/2 p-2 border rounded" placeholder="Price (₦)" />
+                          <select value={editPoolData.status || 'OPEN'} onChange={e => setEditPoolData({...editPoolData, status: e.target.value})} className="w-1/2 p-2 border rounded bg-white">
+                            <option value="OPEN">OPEN</option>
+                            <option value="FILLED">FILLED</option>
+                            <option value="CLOSED">CLOSED</option>
+                          </select>
+                        </div>
+                        <div className="flex gap-2 pt-2">
+                          <button onClick={() => handleSavePoolEdit(pool.id)} className="bg-emerald-600 text-white px-4 py-2 rounded-lg font-bold">Save</button>
+                          <button onClick={() => setEditingPoolId(null)} className="bg-slate-300 px-4 py-2 rounded-lg font-bold">Cancel</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <div>
+                          <span className="font-bold text-slate-900 text-sm block">{pool.item_name}</span>
+                          <span className="text-slate-500 font-medium mt-1 block">
+                            ₦{Number(pool.unit_price).toLocaleString()} / slot • {pool.current_units} of {pool.target_units} filled
+                          </span>
+                          <span className={`mt-1 inline-block px-2 py-0.5 rounded text-[10px] font-bold ${pool.status === 'OPEN' ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'}`}>
+                            {pool.status}
+                          </span>
+                        </div>
+                        <div className="flex gap-2 shrink-0">
+                          <button onClick={() => { setEditingPoolId(pool.id); setEditPoolData({ item_name: pool.item_name, price_per_slot: pool.unit_price, status: pool.status }); }} className="bg-slate-900 text-white px-3 py-1.5 rounded-lg font-bold cursor-pointer">
+                            Edit
+                          </button>
+                          <button onClick={() => handleDeletePool(pool.id)} className="bg-red-100 text-red-600 hover:bg-red-200 px-3 py-1.5 rounded-lg font-bold cursor-pointer">
+                            Delete
+                          </button>
+                        </div>
+                      </>
+                    )}
 
-            <div>
-              <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Unit Label (How much does 1 slot get?) *</label>
-              <input type="text" value={poolUnitLabel} onChange={e => setPoolUnitLabel(e.target.value)} placeholder="e.g. Slot (1/4 Bag / 12.5kg)" required className="w-full p-2.5 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-orange-500 outline-none" />
-            </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-
-          <button type="submit" disabled={isSubmitting} className="w-full bg-orange-600 hover:bg-orange-700 text-white font-bold py-3.5 rounded-xl text-xs transition cursor-pointer shadow-md mt-2 disabled:opacity-50">
-            {isSubmitting ? 'Creating...' : 'Publish Food Pool 🚀'}
-          </button>
-        </form>
+        </div>
       )}
 
       {/* TAB: SHUTTLES */}

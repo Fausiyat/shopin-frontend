@@ -437,7 +437,7 @@ export default function CheckoutModal({
                   </span>
                 </label>
                 {useShuttle && selectedZone !== 'custom_kwara' && (
-                  <div className="mt-2.5 space-y-1.5">
+                  <div className="mt-3 space-y-2">
                     <select 
                       value={selectedShuttleRoute} 
                       onChange={(e) => { 
@@ -445,13 +445,23 @@ export default function CheckoutModal({
                         setSelectedShuttleRoute(val); 
                         setSelectedZone(val === 'POL-ALHIKMAH-01' ? 'alhikmah' : 'unilorin'); 
                       }} 
-                      className="w-full bg-white border border-blue-300 text-xs font-medium rounded-xl p-2.5 outline-none"
+                      className="w-full bg-white border border-blue-300 text-xs font-bold rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-blue-500"
                     >
                       {shuttleCorridors.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                     </select>
-                    <p className="text-[10px] text-blue-700 italic">
-                      Shuttle delivery fee: <b>₦{selectedZone === 'alhikmah' ? '1,300' : '1,800'}</b> (+ ₦500 ShopIn Fee).
-                    </p>
+                    
+                    <div className="flex justify-between items-center text-[10px] px-1">
+                      <span className="text-blue-700 italic">ShopIn Fee: ₦500 applied.</span>
+                      <span className="text-blue-900 font-bold">Shuttle Fee: ₦{selectedZone === 'alhikmah' ? '1,300' : '1,800'}</span>
+                    </div>
+
+                    {/* 🔥 THE NEW WARNING BANNER IN CHECKOUT */}
+                    <div className="bg-blue-100/70 border border-blue-200 text-blue-900 p-2.5 rounded-lg text-[10px] font-medium leading-relaxed shadow-xs flex items-start gap-2">
+                      <span className="text-sm">⚠️</span>
+                      <p>
+                        <b>Shuttle Rules:</b> Deliveries operate strictly between <b>2:00 PM - 6:00 PM</b>. To maintain low zone rates, goods are <b>ONLY dispatched when the shuttle reaches full capacity.</b>
+                      </p>
+                    </div>
                   </div>
                 )}
               </div>

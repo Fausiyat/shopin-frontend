@@ -12,14 +12,13 @@ export default function DeliveryPooling({ activeOrderId, onShuttleSelected }) {
     fetchDeliveryPools();
   }, []);
 
-  // 🚀 HELPER: Determine Dynamic Zone Pricing
   const getZoneFee = (routeName) => {
     if (!routeName) return 1800;
     const nameLower = routeName.toLowerCase();
     if (nameLower.includes('al-hikmah') || nameLower.includes('alhikmah') || nameLower.includes('apalara')) {
       return 1300;
     }
-    return 1800; // Default for outer corridors
+    return 1800; 
   };
 
   const fetchDeliveryPools = async () => {
@@ -27,75 +26,26 @@ export default function DeliveryPooling({ activeOrderId, onShuttleSelected }) {
       setLoading(true);
       setError(null);
 
-      // Calls GET /api/delivery-pools via centralized shopinApi wrapper
       const res = await shopinApi.getActiveDeliveryPools();
       const data = res.data ? res.data : res;
 
-      if (Array.isArray(data) && data.length > 0) {
-        // Map the backend data to ensure the UI strictly enforces the zone rate
+      if (Array.isArray(data)) {
         const poolsWithDynamicRates = data.map(pool => ({
           ...pool,
           base_shuttle_fee: getZoneFee(pool.route_name)
         }));
-        setDeliveryPools(poolsWithDynamicRates);
+        setDeliveryPools(poolsWithDynamicRates); 
       } else {
-        setDeliveryPools(getSampleShuttles());
+        setDeliveryPools([]);
       }
     } catch (err) {
-      console.warn('Using local fallback Ilorin delivery routes:', err);
-      setError('Unable to fetch live delivery pools. Displaying default Ilorin routes.');
-      setDeliveryPools(getSampleShuttles());
+      console.warn('Failed to fetch live delivery pools from backend:', err);
+      setError('Unable to fetch live delivery pools right now.');
+      setDeliveryPools([]); 
     } finally {
       setLoading(false);
     }
   };
-
-  const getSampleShuttles = () => [
-    {
-      id: 1,
-      pool_code: 'POL-ALHIKMAH-01',
-      route_name: 'Mandate Market ➔ Al-Hikmah / Apalara Route',
-      origin_market: 'Mandate Market',
-      destination_zone: 'Al-Hikmah / Apalara',
-      max_capacity: 10,
-      current_orders: 4,
-      base_shuttle_fee: 1300, // Inner Zone
-      status: 'OPEN'
-    },
-    {
-      id: 2,
-      pool_code: 'POL-IREWOLEDE-01',
-      route_name: 'Mandate Market ➔ Irewolede / Unity Road Route',
-      origin_market: 'Mandate Market',
-      destination_zone: 'Irewolede / Unity',
-      max_capacity: 10,
-      current_orders: 2,
-      base_shuttle_fee: 1800, // Outer Zone
-      status: 'OPEN'
-    },
-    {
-      id: 3,
-      pool_code: 'POL-UNILORIN-01',
-      route_name: 'Mandate Market ➔ Tanke / Unilorin Gate Route',
-      origin_market: 'Mandate Market',
-      destination_zone: 'Tanke / Unilorin',
-      max_capacity: 10,
-      current_orders: 7,
-      base_shuttle_fee: 1800, // Outer Zone
-      status: 'OPEN'
-    },
-    {
-      id: 4,
-      pool_code: 'POL-CHALLENGE-01',
-      route_name: 'Mandate Market ➔ Challenge / Fate Route',
-      origin_market: 'Mandate Market',
-      destination_zone: 'Challenge / Fate',
-      max_capacity: 10,
-      current_orders: 3,
-      base_shuttle_fee: 1800, // Outer Zone
-      status: 'OPEN'
-    }
-  ];
 
   const handleJoinShuttle = async (pool) => {
     setJoiningId(pool.id);
@@ -121,7 +71,6 @@ export default function DeliveryPooling({ activeOrderId, onShuttleSelected }) {
     } catch (err) {
       console.warn('API error during join, applying optimistic UI update');
       
-      // Optimistic UI state update
       setDeliveryPools(prev => prev.map(p => 
         p.id === pool.id ? { ...p, current_orders: (p.current_orders || 0) + 1 } : p
       ));
@@ -149,17 +98,25 @@ export default function DeliveryPooling({ activeOrderId, onShuttleSelected }) {
 
   return (
     <div className="space-y-6">
-      {/* Header Notification Banner */}
-      <div className="bg-blue-50 border border-blue-200 p-4 rounded-xl">
-        <h2 className="text-base font-bold text-blue-900 flex items-center gap-2">
-          <span>🚀</span> Express Delivery Corridors (Ilorin Hubs)
+      {/* 🌟 UPGRADED Header Notification Banner with Warning */}
+      <div className="bg-blue-50 border border-blue-200 p-4 sm:p-5 rounded-2xl shadow-sm">
+        <h2 className="text-base sm:text-lg font-extrabold text-blue-950 flex items-center gap-2">
+          <span>🚀</span> Express Delivery Corridors
         </h2>
-        <p className="text-xs text-blue-700 mt-1">
+        <p className="text-xs text-blue-800 mt-1 font-medium">
           Batch your delivery route with other buyers from Mandate Market to lower your dispatch fee to shared zone rates (₦1,300 - ₦1,800).
         </p>
+        
+        {/* 🔥 The Warning Banner */}
+        <div className="mt-4 bg-blue-100/80 border border-blue-300 p-3 rounded-xl flex items-start gap-3">
+          <span className="text-xl">⚠️</span>
+          <div className="text-[11px] sm:text-xs text-blue-900 font-semibold leading-relaxed space-y-1">
+            <p><b>Strict Operating Hours:</b> Shuttles only operate between <b className="text-blue-950">2:00 PM and 6:00 PM</b>.</p>
+            <p><b>Capacity Rule:</b> To maintain these heavily discounted rates, goods will <b className="text-blue-950">ONLY be dispatched when the shuttle reaches full capacity</b>.</p>
+          </div>
+        </div>
       </div>
 
-      {/* Feedback Toast */}
       {feedback && (
         <div className={`p-3 rounded-xl text-xs font-semibold flex items-center justify-between ${
           feedback.type === 'success' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : 'bg-red-100 text-red-800'
@@ -170,8 +127,8 @@ export default function DeliveryPooling({ activeOrderId, onShuttleSelected }) {
       )}
 
       {deliveryPools.length === 0 ? (
-        <div className="p-8 border border-dashed border-slate-300 rounded-xl text-center text-slate-500 text-xs">
-          No active delivery shuttles available right now.
+        <div className="p-8 border border-dashed border-slate-300 bg-white rounded-xl text-center text-slate-500 text-xs">
+          No active delivery shuttles available right now. Check back later!
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -208,7 +165,6 @@ export default function DeliveryPooling({ activeOrderId, onShuttleSelected }) {
                     📍 {pool.origin_market || 'Mandate Market'} ➔ {pool.destination_zone}
                   </p>
 
-                  {/* Capacity Progress Bar */}
                   <div className="w-full bg-slate-100 rounded-full h-2 mb-2 overflow-hidden">
                     <div 
                       className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
@@ -221,7 +177,6 @@ export default function DeliveryPooling({ activeOrderId, onShuttleSelected }) {
                   </div>
                 </div>
 
-                {/* Pricing & Join Button */}
                 <div className="flex justify-between items-center pt-3 border-t border-slate-100">
                   <div>
                     <span className="text-xs text-slate-400 block font-medium">Zone Shuttle Rate</span>

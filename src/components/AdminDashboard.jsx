@@ -3,7 +3,6 @@ import axios from 'axios';
 import shopinApi from '../services/api';
 import UserTracker from './UserTracker';
 
-// 🌟 MOVED OUTSIDE: This guarantees the data always exists and cannot be overwritten by empty states!
 const SAMPLE_ADMIN_PRODUCTS = [
   { id: 'v-prod-6', product_name: 'Item 7 Chicken & Chips', category: 'Restaurants', price_ngn: 2500, location: 'Tanke Hub' },
   { id: 'v-prod-7', product_name: 'Aroma Amala & Ewedu', category: 'Restaurants', price_ngn: 1800, location: 'Challenge Hub' },
@@ -24,11 +23,6 @@ function AdminProductsManager({ API_URL, adminPin }) {
   const [addCategory, setAddCategory] = useState('MINI-SERVICES');
   const [addType, setAddType] = useState('service');
   const [addPrice, setAddPrice] = useState('');
-
-  // 🌟 EXISTING POOLS STATE
-  const [existingPools, setExistingPools] = useState([]);
-  const [editingPoolId, setEditingPoolId] = useState(null);
-  const [editPoolData, setEditPoolData] = useState({});
 
   useEffect(() => {
     fetchItems();
@@ -285,54 +279,28 @@ export default function AdminDashboard() {
   const [newShopperPin, setNewShopperPin] = useState('');
   const [shopperPinFeedback, setShopperPinFeedback] = useState(null);
 
-  // 🌟 NEW: Food Pooling Form State
+  // 🌟 POOLS STATE
   const [poolItemName, setPoolItemName] = useState('');
   const [poolTargetItem, setPoolTargetItem] = useState('');
   const [poolPricePerSlot, setPoolPricePerSlot] = useState('');
   const [poolTotalSlots, setPoolTotalSlots] = useState('');
-  const [poolUnitLabel, setPoolUnitLabel] = useState('');
   const [poolMarket, setPoolMarket] = useState('Mandate Market');
+  const [existingPools, setExistingPools] = useState([]);
+  const [editingPoolId, setEditingPoolId] = useState(null);
+  const [editPoolData, setEditPoolData] = useState({});
 
-  useEffect(() => {
-    fetchLocations();
-  }, []);
-
-  useEffect(() => {
-    if (activeAdminTab === 'orders') fetchPendingOrders();
-    if (activeAdminTab === 'deposits') fetchPendingDeposits();
-    // 🌟 ADD THIS LINE:
-    if (activeAdminTab === 'pools') fetchPools();
-  }, [activeAdminTab]);
-
-  // 🌟 ADD THIS FUNCTION RIGHT BELOW IT:
+  // 🌟 SAFE FETCH FUNCTIONS
   const fetchPools = async () => {
     try {
       const res = await axios.get(`${API_URL}/api/pools`);
-      setExistingPools(res.data);
+      if (Array.isArray(res.data)) {
+        setExistingPools(res.data);
+      } else {
+        setExistingPools([]);
+      }
     } catch (err) {
       console.warn("Failed to fetch pools");
-    }
-  };
-
-  const handleDeletePool = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this food pool?")) return;
-    try {
-      await axios.delete(`${API_URL}/api/admin/pools/${id}`, { headers: { 'x-admin-pin': adminPin } });
-      setFeedback({ type: 'success', text: 'Pool deleted successfully!' });
-      fetchPools(); // Refresh list
-    } catch (err) {
-      setFeedback({ type: 'error', text: 'Failed to delete pool.' });
-    }
-  };
-
-  const handleSavePoolEdit = async (id) => {
-    try {
-      await axios.put(`${API_URL}/api/admin/pools/${id}`, editPoolData, { headers: { 'x-admin-pin': adminPin } });
-      setFeedback({ type: 'success', text: 'Pool updated successfully!' });
-      setEditingPoolId(null);
-      fetchPools(); // Refresh list
-    } catch (err) {
-      setFeedback({ type: 'error', text: 'Failed to update pool.' });
+      setExistingPools([]);
     }
   };
 
@@ -344,6 +312,39 @@ export default function AdminDashboard() {
       console.error("Failed to fetch dynamic locations:", err);
     }
   };
+
+  const fetchPendingDeposits = async () => {
+    setIsLoading(true);
+    try {
+      const response = await axios.get(`${API_URL}/api/admin/pending-deposits`, {
+        headers: { 'x-admin-pin': adminPin }
+      });
+      setPendingDeposits(response.data.pending_deposits || []);
+    } catch (err) {
+      console.error("Failed to fetch deposits:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchPendingOrders = async () => {
+    try {
+      const res = await shopinApi.getAdminOrders ? await shopinApi.getAdminOrders() : { data: { orders: [] } };
+      setPendingOrders(res.data?.orders || []);
+    } catch (err) {
+      console.warn("Could not fetch orders.");
+    }
+  };
+
+  useEffect(() => {
+    fetchLocations();
+  }, []);
+
+  useEffect(() => {
+    if (activeAdminTab === 'orders') fetchPendingOrders();
+    if (activeAdminTab === 'deposits') fetchPendingDeposits();
+    if (activeAdminTab === 'pools') fetchPools();
+  }, [activeAdminTab]);
 
   const updateLocationCategory = async (categoryName, updatedArray) => {
     try {
@@ -364,7 +365,6 @@ export default function AdminDashboard() {
     if (!value.trim()) return;
     const currentList = locations[categoryName] || [];
     if (currentList.includes(value.trim())) return alert("Location already exists!");
-    
     updateLocationCategory(categoryName, [...currentList, value.trim()]);
     resetInput('');
   };
@@ -373,20 +373,6 @@ export default function AdminDashboard() {
     const currentList = locations[categoryName] || [];
     const filteredList = currentList.filter(loc => loc !== valueToRemove);
     updateLocationCategory(categoryName, filteredList);
-  };
-
-  const fetchPendingDeposits = async () => {
-    setIsLoading(true);
-    try {
-      const response = await axios.get(`${API_URL}/api/admin/pending-deposits`, {
-        headers: { 'x-admin-pin': adminPin }
-      });
-      setPendingDeposits(response.data.pending_deposits || []);
-    } catch (err) {
-      console.error("Failed to fetch deposits:", err);
-    } finally {
-      setIsLoading(false);
-    }
   };
 
   const handleApproveDeposit = async (depositId, userName, amount) => {
@@ -401,15 +387,6 @@ export default function AdminDashboard() {
       fetchPendingDeposits(); 
     } catch (err) {
       alert("❌ Error approving deposit.");
-    }
-  };
-
-  const fetchPendingOrders = async () => {
-    try {
-      const res = await shopinApi.getAdminOrders ? await shopinApi.getAdminOrders() : { data: { orders: [] } };
-      setPendingOrders(res.data?.orders || []);
-    } catch (err) {
-      console.warn("Could not fetch orders.");
     }
   };
 
@@ -475,7 +452,6 @@ export default function AdminDashboard() {
     }
   };
 
-// 🌟 FIX: Updated to use direct Axios so it successfully saves to your Neon Database!
   const handleCreatePool = async (e) => {
     e.preventDefault();
     if (!poolItemName || !poolPricePerSlot || !poolTotalSlots) return;
@@ -494,13 +470,35 @@ export default function AdminDashboard() {
       await axios.post(`${API_URL}/api/admin/pools`, payload, {
         headers: { 'x-admin-pin': adminPin }
       });
-      
       setFeedback({ type: 'success', text: `Food Pool "${poolItemName}" launched successfully!` });
-      setPoolItemName(''); setPoolTargetItem(''); setPoolPricePerSlot(''); setPoolTotalSlots(''); setPoolUnitLabel('');
+      setPoolItemName(''); setPoolTargetItem(''); setPoolPricePerSlot(''); setPoolTotalSlots('');
+      fetchPools();
     } catch (err) {
       setFeedback({ type: 'error', text: `Failed to create pool: ${err.response?.data?.error || err.message}` });
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleDeletePool = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this food pool?")) return;
+    try {
+      await axios.delete(`${API_URL}/api/admin/pools/${id}`, { headers: { 'x-admin-pin': adminPin } });
+      setFeedback({ type: 'success', text: 'Pool deleted successfully!' });
+      fetchPools(); 
+    } catch (err) {
+      setFeedback({ type: 'error', text: 'Failed to delete pool.' });
+    }
+  };
+
+  const handleSavePoolEdit = async (id) => {
+    try {
+      await axios.put(`${API_URL}/api/admin/pools/${id}`, editPoolData, { headers: { 'x-admin-pin': adminPin } });
+      setFeedback({ type: 'success', text: 'Pool updated successfully!' });
+      setEditingPoolId(null);
+      fetchPools(); 
+    } catch (err) {
+      setFeedback({ type: 'error', text: 'Failed to update pool.' });
     }
   };
 
@@ -554,10 +552,7 @@ export default function AdminDashboard() {
           <button onClick={() => setActiveAdminTab('orders')} className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${activeAdminTab === 'orders' ? 'bg-emerald-600' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}>📦 Orders</button>
           <button onClick={() => setActiveAdminTab('prices')} className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${activeAdminTab === 'prices' ? 'bg-emerald-600' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}>📊 Prices</button>
           <button onClick={() => setActiveAdminTab('shuttles')} className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${activeAdminTab === 'shuttles' ? 'bg-blue-600' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}>🚀 Shuttles</button>
-          
-          {/* 🌟 NEW POOLS NAVIGATION BUTTON */}
           <button onClick={() => setActiveAdminTab('pools')} className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${activeAdminTab === 'pools' ? 'bg-orange-500' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}>🤝 Pools</button>
-          
           <button onClick={() => setActiveAdminTab('settings')} className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${activeAdminTab === 'settings' ? 'bg-amber-600' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}>🔐 Security</button>
         </div>
       </div>
@@ -809,8 +804,7 @@ export default function AdminDashboard() {
         </form>
       )}
 
-      {/* 🌟 NEW TAB: POOLS (FOOD POOLING MANAGER) */}
-      {/* 🌟 NEW TAB: POOLS (FOOD POOLING MANAGER) */}
+      {/* 🌟 POOLS TAB */}
       {activeAdminTab === 'pools' && (
         <div className="max-w-4xl mx-auto space-y-6">
           <form onSubmit={handleCreatePool} className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-4">
@@ -863,7 +857,7 @@ export default function AdminDashboard() {
             <h3 className="font-extrabold text-slate-900 text-base border-b border-slate-100 pb-2">
               Manage Active Food Pools
             </h3>
-            {existingPools.length === 0 ? (
+            {(!existingPools || existingPools.length === 0) ? (
               <p className="text-xs text-slate-400 text-center py-4">No active food pools found.</p>
             ) : (
               <div className="space-y-3">

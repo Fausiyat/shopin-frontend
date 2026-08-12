@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import shopinApi from '../services/api';
 
-// Baseline fallback estimated local unit prices in Kwara (₦)[cite: 8]
+// Baseline fallback estimated local unit prices in Kwara (₦)
 const ESTIMATED_PRICES = {
   cup: 350,
   module: 1600,
@@ -61,6 +61,10 @@ export default function CheckoutModal({
   const [recipientPhone, setRecipientPhone] = useState('');
   const [recipientAddress, setRecipientAddress] = useState('');
   
+  // 🌟 NEW: Track processing add-ons
+  const [needsProcessing, setNeedsProcessing] = useState(false);
+  const PROCESSING_FEE = 500; 
+  
   const [customPrices, setCustomPrices] = useState({});
 
   if (!isOpen) return null;
@@ -77,7 +81,6 @@ export default function CheckoutModal({
     return rawTitle.trim();
   };
 
-  // Calculate item estimates dynamically[cite: 8]
   const calculateItemCost = (item, idx) => {
     const isErrand = item.category === 'Custom Errand';
     const isNairaVal = (item.unit || '').toLowerCase() === 'naira_value';
@@ -104,7 +107,7 @@ export default function CheckoutModal({
     ? items.reduce((sum, item, idx) => sum + calculateItemCost(item, idx), 0) 
     : 0;
 
-  // 🚚 Dynamic Delivery Fee Calculation[cite: 8]
+  // 🚚 Dynamic Delivery Fee Calculation
   let currentDeliveryFee = 0;
   if (selectedZone === 'alhikmah') {
     currentDeliveryFee = useShuttle ? 1300 : 1500;
@@ -114,8 +117,10 @@ export default function CheckoutModal({
     currentDeliveryFee = 3000; 
   }
 
+  // 🌟 UPGRADE: Calculate processing fee and add it to Grand Total
+  const currentProcessingFee = needsProcessing ? PROCESSING_FEE : 0;
   const serviceFee = 500; 
-  const grandTotal = estimatedItemCost + currentDeliveryFee + serviceFee;
+  const grandTotal = estimatedItemCost + currentDeliveryFee + serviceFee + currentProcessingFee;
 
   const handlePriceChange = (idx, value) => {
     setCustomPrices((prev) => ({
@@ -130,7 +135,6 @@ export default function CheckoutModal({
       return;
     }
 
-    // 🛡️ UNDER-PRICING PROTECTION CHECK[cite: 8]
     for (let idx = 0; idx < items.length; idx++) {
       const item = items[idx];
       const customVal = customPrices[idx];
@@ -184,10 +188,11 @@ export default function CheckoutModal({
       },
       delivery_fee: currentDeliveryFee,
       service_fee: serviceFee,
+      processing_fee: currentProcessingFee, // 🌟 Tells the backend they paid for processing!
       estimated_total: grandTotal,
       estimated_item_cost: estimatedItemCost,
       payment_mode: 'full',
-      deposit_paid: grandTotal, // Always full payment now
+      deposit_paid: grandTotal, 
       balance_remaining: 0,
       is_gift: isGifting,
       recipient_info: isGifting ? { name: recipientName.trim(), phone: recipientPhone.trim(), address: recipientAddress.trim() } : null
@@ -225,6 +230,7 @@ export default function CheckoutModal({
     setIsCustomAddress(false);
     setCustomAddressDetails('');
     setCustomZoneName('');
+    setNeedsProcessing(false); // Reset processing choice
     onClose();
   };
 
@@ -434,7 +440,7 @@ export default function CheckoutModal({
                     <p className="text-[10px] text-purple-700">Deliver directly to someone else</p>
                   </div>
                 </div>
-                <input type="checkbox" checked={isGifting} onChange={(e) => setIsGifting(e.target.checked)} className="w-4 h-4 accent-purple-600 cursor-pointer"/>
+                <input type="checkbox" checked={isGifting} readOnly className="w-4 h-4 accent-purple-600 cursor-pointer pointer-events-none"/>
               </div>
               {isGifting && (
                 <div className="pt-2 border-t border-purple-200 space-y-2 text-xs">
@@ -445,11 +451,37 @@ export default function CheckoutModal({
               )}
             </div>
 
+            {/* 🌟 NEW: PROCESSING ADD-ON CHECKBOX */}
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-center justify-between cursor-pointer shadow-xs transition hover:shadow-sm" onClick={() => setNeedsProcessing(!needsProcessing)}>
+              <div className="flex items-center gap-3">
+                <input 
+                  type="checkbox" 
+                  checked={needsProcessing} 
+                  readOnly
+                  className="w-5 h-5 accent-amber-600 rounded cursor-pointer pointer-events-none" 
+                />
+                <div>
+                  <h4 className="text-sm font-bold text-amber-900">Add Food Processing</h4>
+                  <p className="text-[10px] text-amber-700">Peel yams, cut meat, or wash & blend produce.</p>
+                </div>
+              </div>
+              <span className="font-extrabold text-amber-800">+₦{PROCESSING_FEE}</span>
+            </div>
+
             <div className="space-y-1.5 text-xs text-slate-600 border-t border-slate-100 pt-3">
               <div className="flex justify-between">
                 <span>Total Item Cost (Goods & Errands):</span>
                 <span className="font-semibold text-slate-800">₦{estimatedItemCost.toLocaleString()}</span>
               </div>
+              
+              {/* 🌟 Show Processing Fee in summary only if they checked the box! */}
+              {needsProcessing && (
+                <div className="flex justify-between text-amber-700">
+                  <span>Food Processing Add-on:</span>
+                  <span className="font-semibold">₦{currentProcessingFee.toLocaleString()}</span>
+                </div>
+              )}
+
               <div className="flex justify-between">
                 <span>Delivery Fee:</span>
                 <span className="font-semibold text-slate-800">₦{currentDeliveryFee.toLocaleString()}</span>

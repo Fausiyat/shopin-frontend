@@ -176,11 +176,12 @@ export default function ShopperPickingList() {
                         }`}
                       >
                         <div className="flex items-start gap-3 flex-1">
+                          {/* 🌟 FIX: Added readOnly and pointer-events-none to stop the double-click bug */}
                           <input
                             type="checkbox"
                             checked={isChecked}
-                            onChange={() => toggleCheck(category, idx)}
-                            className="mt-1 w-4 h-4 accent-emerald-600 rounded cursor-pointer"
+                            readOnly
+                            className="mt-1 w-4 h-4 accent-emerald-600 rounded cursor-pointer pointer-events-none"
                           />
                           <div>
                             <h4 className={`font-bold text-sm ${isChecked ? 'line-through text-slate-500' : 'text-slate-900'}`}>

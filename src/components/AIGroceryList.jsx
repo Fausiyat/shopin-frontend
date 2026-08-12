@@ -64,7 +64,7 @@ export default function AIGroceryList({ onAddToCart, openCheckout }) {
 
   const currentPresets = mode === 'grocery' ? groceryPresets : errandPresets;
 
-  const handleParse = async () => {
+ const handleParse = async () => {
     if (!inputText.trim() || loading) return; 
     setLoading(true);
     setError(null);
@@ -80,7 +80,7 @@ export default function AIGroceryList({ onAddToCart, openCheckout }) {
       const rawItemsList = data.parsed_data?.items || data.items || [];
 
       // Clean item titles and automatically extract quantities if embedded
-      const cleanedItemsList = rawItemsList.map((item, idx) => {
+      let cleanedItemsList = rawItemsList.map((item, idx) => {
         const rawTitle = item.item_name || item.name || '';
         const { cleanName, qty } = sanitizeItemAndExtractQty(rawTitle, item.quantity);
 
@@ -95,16 +95,25 @@ export default function AIGroceryList({ onAddToCart, openCheckout }) {
         };
       });
 
-      if ((data.status === 'success' || data.success) && cleanedItemsList.length > 0) {
+      // 🌟 NEW: THE BULLETPROOF ERRAND FALLBACK
+      // If they typed a custom errand, but the API returned 0 items (because it couldn't find food), 
+      // we forcefully create 1 generic "Errand Item" using exactly what they typed!
+      if (mode === 'errand' && cleanedItemsList.length === 0) {
+        cleanedItemsList = [{
+          id: `errand_${Date.now()}`,
+          item_name: inputText.trim(), // Use their exact request as the item name!
+          brand_or_variant: 'Custom Dispatch',
+          quantity: 1,
+          unit: 'unit',
+          category: 'Custom Errand'
+        }];
+      }
+
+      if (cleanedItemsList.length > 0) {
         setParsedResult({
           items: cleanedItemsList,
           is_service_request: data.parsed_data?.is_service_request || mode === 'errand',
           ...(data.parsed_data || {})
-        });
-      } else if (cleanedItemsList.length > 0) {
-        setParsedResult({ 
-          items: cleanedItemsList,
-          is_service_request: mode === 'errand'
         });
       } else {
         throw new Error(data.error || data.message || 'Could not interpret request');
@@ -112,13 +121,26 @@ export default function AIGroceryList({ onAddToCart, openCheckout }) {
     } catch (err) {
       console.error("Parsing Error:", err);
       
-      if (!err.response || err.message === 'Network Error') {
+      // 🌟 SECONDARY FALLBACK: Even if the API completely crashes, if they are on the Errand tab, just push the text through!
+      if (mode === 'errand') {
+        setParsedResult({
+          items: [{
+            id: `errand_fallback_${Date.now()}`,
+            item_name: inputText.trim(),
+            brand_or_variant: 'Custom Dispatch',
+            quantity: 1,
+            unit: 'unit',
+            category: 'Custom Errand'
+          }],
+          is_service_request: true
+        });
+      } else if (!err.response || err.message === 'Network Error') {
         setError("🚨 Whoops! Our Kwara Market servers are currently offline or restarting. Please check your internet or call our emergency support line at 081-4308-6509.");
       } else {
         setError("Could not understand that list. Please check your spelling and try again.");
       }
     } finally {
-      setLoading(false); // 👈 Fixed from setIsLoading to setLoading
+      setLoading(false); 
     }
   };
 

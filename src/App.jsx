@@ -244,7 +244,7 @@ function App() {
                   📞 Call Admin
                 </a>
                 <a 
-                  href="https://wa.me/2348143086509?text=Hello%20ShopIn%20Admin,%20I%20need%20help%20with%20an%20issue:" 
+                  href="https://wa.me/2349040161152?text=Hello%20ShopIn%20Admin,%20I%20need%20help%20with%20an%20issue:" 
                   target="_blank" 
                   rel="noopener noreferrer"
                   className="flex-1 sm:flex-initial bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2.5 rounded-xl text-center transition cursor-pointer shadow-xs whitespace-nowrap active:scale-95"

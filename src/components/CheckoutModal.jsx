@@ -222,6 +222,32 @@ export default function CheckoutModal({
     }
   };
 
+  // 🌟 NEW: WhatsApp Message Generator
+  const generateWhatsAppReceipt = () => {
+    const orderId = orderData?.order_code || orderData?.id || 'N/A';
+    let msg = `*🛒 New ShopIn Order Receipt*\n\n`;
+    msg += `*Order ID:* ${orderId}\n`;
+    msg += `*Total Paid:* ₦${grandTotal.toLocaleString()}\n`;
+    
+    const zoneName = selectedZone === 'custom_kwara' ? customZoneName : (selectedZone === 'alhikmah' ? 'Al-Hikmah / Apalara' : 'Tanke / Unilorin');
+    msg += `*Delivery Zone:* ${zoneName}\n\n`;
+    
+    msg += `*Items:*\n`;
+    items.forEach(item => {
+      msg += `- ${item.quantity}x ${item.name || item.item_name}\n`;
+    });
+    
+    if (needsProcessing) {
+      msg += `- Food Processing Added (+₦${PROCESSING_FEE})\n`;
+    }
+    
+    msg += `\n_Paid securely via ShopIn Wallet._`;
+    
+    const encodedMsg = encodeURIComponent(msg);
+    // Directly linked to the new 0904 WhatsApp line
+    return `https://wa.me/2349040161152?text=${encodedMsg}`;
+  };
+
   const handleDone = () => {
     setIsConfirmed(false);
     setErrorMessage(null);
@@ -504,7 +530,25 @@ export default function CheckoutModal({
           <div className="text-center py-6 space-y-3">
             <div className="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center text-2xl mx-auto font-black">✓</div>
             <h3 className="text-lg font-bold text-slate-900">Order Placed Successfully!</h3>
-            <button type="button" onClick={handleDone} className="mt-4 bg-slate-900 text-white px-6 py-2.5 rounded-lg text-xs cursor-pointer">Done</button>
+            <p className="text-xs text-slate-500">Your payment of ₦{grandTotal.toLocaleString()} was successful.</p>
+            
+            <div className="flex flex-col gap-2 mt-4 pt-2">
+              <a 
+                href={generateWhatsAppReceipt()} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3 rounded-xl text-xs font-bold cursor-pointer flex items-center justify-center gap-2 transition shadow-xs"
+              >
+                📲 Send Receipt to Admin on WhatsApp
+              </a>
+              <button 
+                type="button" 
+                onClick={handleDone} 
+                className="bg-slate-100 hover:bg-slate-200 text-slate-800 px-6 py-3 rounded-xl text-xs font-bold cursor-pointer transition"
+              >
+                Done & Close
+              </button>
+            </div>
           </div>
         )}
       </div>

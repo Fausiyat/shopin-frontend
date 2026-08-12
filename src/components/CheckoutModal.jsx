@@ -1,5 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import shopinApi from '../services/api';
+
+const API_URL = import.meta.env.VITE_API_URL || 'https://shopin-kwara-backend.onrender.com';
 
 // Baseline fallback estimated local unit prices in Kwara (₦)
 const ESTIMATED_PRICES = {
@@ -66,6 +69,29 @@ export default function CheckoutModal({
   const PROCESSING_FEE = 500; 
   
   const [customPrices, setCustomPrices] = useState({});
+  const [livePrices, setLivePrices] = useState({}); // 🔥 Holds the live admin prices!
+
+  // 🚀 Fetch Live Prices exactly when the cart opens!
+  useEffect(() => {
+    if (isOpen) {
+      const fetchLivePrices = async () => {
+        try {
+          const res = await axios.get(`${API_URL}/api/market/ticker`);
+          if (res.data && res.data.data) {
+            const priceMap = {};
+            res.data.data.forEach(item => {
+              // Store prices strictly by lowercase item name for easy matching
+              priceMap[item.item_name.toLowerCase()] = parseFloat(item.max_price_ngn);
+            });
+            setLivePrices(priceMap);
+          }
+        } catch (err) {
+          console.warn("Could not fetch live database prices. Falling back to estimates.", err);
+        }
+      };
+      fetchLivePrices();
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -98,8 +124,15 @@ export default function CheckoutModal({
       return parseFloat(item.quantity) || 0;
     }
 
+    // 🌟 SMART PRICING: Live Database -> Passed Price -> Hardcoded Fallback
+    const itemNameKey = cleanItemTitle(item.name || item.item_name).toLowerCase();
+    const liveAdminPrice = livePrices[itemNameKey];
+    
     const unitKey = (item.unit || '').toLowerCase();
-    const unitPrice = item.price || ESTIMATED_PRICES[unitKey] || ESTIMATED_PRICES.default;
+    
+    // It will use the liveAdminPrice if you logged it in the console, otherwise it falls back!
+    const unitPrice = liveAdminPrice || item.price || ESTIMATED_PRICES[unitKey] || ESTIMATED_PRICES.default;
+    
     return (item.quantity || 1) * unitPrice;
   };
 
@@ -144,8 +177,12 @@ export default function CheckoutModal({
       
       if (customVal !== undefined && customVal !== '') {
         const userEnteredPrice = parseFloat(customVal) || 0;
+        
+        // Let's also check the live admin price for validation!
+        const itemNameKey = cleanItemTitle(item.name || item.item_name).toLowerCase();
+        const liveAdminPrice = livePrices[itemNameKey];
         const unitKey = (item.unit || '').toLowerCase();
-        const baselinePrice = ESTIMATED_PRICES[unitKey] || ESTIMATED_PRICES.default;
+        const baselinePrice = liveAdminPrice || ESTIMATED_PRICES[unitKey] || ESTIMATED_PRICES.default;
         
         if (userEnteredPrice > 0 && userEnteredPrice < (baselinePrice * 0.4)) {
           const itemName = cleanItemTitle(item.name || item.item_name);
@@ -191,7 +228,7 @@ export default function CheckoutModal({
       },
       delivery_fee: currentDeliveryFee,
       service_fee: serviceFee,
-      processing_fee: currentProcessingFee, // 🌟 Tells the backend they paid for processing!
+      processing_fee: currentProcessingFee, 
       estimated_total: grandTotal,
       estimated_item_cost: estimatedItemCost,
       payment_mode: 'full',
@@ -225,7 +262,6 @@ export default function CheckoutModal({
     }
   };
 
-  // 🌟 NEW: WhatsApp Message Generator
   const generateWhatsAppReceipt = () => {
     const orderId = orderData?.order_code || orderData?.id || 'N/A';
     let msg = `*🛒 New ShopIn Order Receipt*\n\n`;
@@ -247,7 +283,6 @@ export default function CheckoutModal({
     msg += `\n_Paid securely via ShopIn Wallet._`;
     
     const encodedMsg = encodeURIComponent(msg);
-    // Directly linked to the new 0904 WhatsApp line
     return `https://wa.me/2349040161152?text=${encodedMsg}`;
   };
 
@@ -259,7 +294,7 @@ export default function CheckoutModal({
     setIsCustomAddress(false);
     setCustomAddressDetails('');
     setCustomZoneName('');
-    setNeedsProcessing(false); // Reset processing choice
+    setNeedsProcessing(false); 
     onClose();
   };
 
@@ -338,7 +373,6 @@ export default function CheckoutModal({
               </div>
             </div>
 
-            {/* 📍 Delivery Zone & Rate Rules */}
             <div className="space-y-3 bg-blue-50/60 border border-blue-200 rounded-2xl p-4">
               <h4 className="text-xs font-bold text-blue-900 uppercase tracking-wider block">📦 Delivery Location & Zone</h4>
               
@@ -458,11 +492,10 @@ export default function CheckoutModal({
                       <span className="text-blue-900 font-bold">Shuttle Fee: ₦{selectedZone === 'alhikmah' ? '1,000' : '1,500'}</span>
                     </div>
 
-                    {/* 🔥 THE NEW WARNING BANNER IN CHECKOUT */}
-                    <div className="bg-blue-100/70 border border-blue-200 text-blue-900 p-2.5 rounded-lg text-[10px] font-medium leading-relaxed shadow-xs flex items-start gap-2">
+                    <div className="bg-blue-100/70 border border-blue-200 text-blue-900 p-3 rounded-xl text-[10px] font-medium leading-relaxed shadow-xs flex items-start gap-2.5">
                       <span className="text-sm">⚠️</span>
                       <p>
-                        <b>Shuttle Rules:</b> Deliveries operate strictly between <b>2:00 PM - 6:00 PM</b>. To maintain low zone rates, goods are <b>ONLY dispatched when the shuttle reaches full capacity.</b>
+                        <b>Shuttle Rules:</b> You can join a shuttle anytime, but deliveries are dispatched strictly between <b>2:00 PM - 6:00 PM</b>. To maintain these discounted rates, goods leave <b>ONLY when the shuttle reaches full capacity.</b>
                       </p>
                     </div>
                   </div>
@@ -490,7 +523,6 @@ export default function CheckoutModal({
               )}
             </div>
 
-            {/* 🌟 NEW: PROCESSING ADD-ON CHECKBOX */}
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-center justify-between cursor-pointer shadow-xs transition hover:shadow-sm" onClick={() => setNeedsProcessing(!needsProcessing)}>
               <div className="flex items-center gap-3">
                 <input 
@@ -513,7 +545,6 @@ export default function CheckoutModal({
                 <span className="font-semibold text-slate-800">₦{estimatedItemCost.toLocaleString()}</span>
               </div>
               
-              {/* 🌟 Show Processing Fee in summary only if they checked the box! */}
               {needsProcessing && (
                 <div className="flex justify-between text-amber-700">
                   <span>Food Processing Add-on:</span>

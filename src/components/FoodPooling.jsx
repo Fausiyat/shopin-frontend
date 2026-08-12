@@ -52,18 +52,18 @@ export default function FoodPooling({ onAddToCart, openCheckout }) {
     setLoading(true);
     try {
       const response = await shopinApi.getActivePools();
-      const data = response.data;
-      if (Array.isArray(data) && data.length > 0) {
-        setPools(data);
-        setSelectedPoolId(data[0].id);
+      // Safely handle both axios and direct responses
+      const data = response.data ? response.data : response; 
+      
+      if (Array.isArray(data)) {
+        setPools(data); // If it's empty, it will correctly set an empty array
+        setSelectedPoolId(data.length > 0 ? data[0].id : null);
       } else {
-        setPools(fallbackPools);
-        setSelectedPoolId(fallbackPools[0].id);
+        setPools([]);
       }
     } catch (err) {
-      console.warn("Could not fetch active pools from backend, using fallbacks:", err);
-      setPools(fallbackPools);
-      setSelectedPoolId(fallbackPools[0].id);
+      console.warn("Could not fetch active pools from backend:", err);
+      setPools([]); // Stop using fallbacks on error
     } finally {
       setLoading(false);
     }
@@ -121,10 +121,10 @@ export default function FoodPooling({ onAddToCart, openCheckout }) {
     }
   };
 
-  if (loading) {
+  if (!loading && pools.length === 0) {
     return (
-      <div className="p-6 text-center text-slate-500 text-xs animate-pulse">
-        ⏳ Loading active bulk food pools...
+      <div className="p-6 text-center text-slate-500 text-sm bg-white rounded-xl border border-slate-200">
+        No active food pools right now. Check back later!
       </div>
     );
   }

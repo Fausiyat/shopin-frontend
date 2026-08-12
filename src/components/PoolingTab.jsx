@@ -15,18 +15,17 @@ export default function PoolingTab({ onAddToCart, openCheckout }) {
       setLoading(true);
       setError(null);
       
-      // Calls endpoint GET /api/pools via centralized Axios service
       const res = await shopinApi.getActivePools();
       const data = res.data ? res.data : res;
       
-      if (Array.isArray(data) && data.length > 0) {
-        setPools(data);
+      if (Array.isArray(data)) {
+        setPools(data); // Accept the empty database array!
       } else {
-        setPools(getSamplePools());
+        setPools([]);
       }
     } catch (err) {
-      console.warn("Using sample pooling data while API connects:", err);
-      setPools(getSamplePools());
+      console.warn("Failed to fetch pools from backend:", err);
+      setPools([]); // Stop using sample pools
     } finally {
       setLoading(false);
     }
@@ -77,10 +76,10 @@ export default function PoolingTab({ onAddToCart, openCheckout }) {
     }
   };
 
-  if (loading) {
+  if (!loading && pools.length === 0) {
     return (
-      <div className="p-8 text-center text-slate-500 text-sm">
-        <span className="animate-spin inline-block mr-2">⏳</span> Loading active Kwara produce pools...
+      <div className="p-8 text-center bg-white border border-slate-200 rounded-xl text-slate-500 text-sm mt-6">
+        No active bulk freight or produce pools at the moment. 
       </div>
     );
   }

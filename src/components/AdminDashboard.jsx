@@ -353,6 +353,39 @@ export default function AdminDashboard() {
   const [newMarket, setNewMarket] = useState('');
   const [newSupermarket, setNewSupermarket] = useState('');
   const [newRestaurant, setNewRestaurant] = useState('');
+  // 🌟 NEW STATE: For managing live market prices
+  const [marketPrices, setMarketPrices] = useState([]);
+  const [isFetchingPrices, setIsFetchingPrices] = useState(false);
+
+  // Fetch prices from the ticker
+  const fetchMarketPrices = async () => {
+    setIsFetchingPrices(true);
+    try {
+      const res = await axios.get(`${API_URL}/api/market/ticker`);
+      if (res.data && res.data.data) {
+        setMarketPrices(res.data.data);
+      }
+    } catch (err) {
+      console.warn("Failed to fetch market prices:", err);
+      setMarketPrices([]);
+    } finally {
+      setIsFetchingPrices(false);
+    }
+  };
+
+  // Delete a price entry securely
+  const handleDeletePrice = async (id) => {
+    if (!window.confirm("Are you sure you want to permanently delete this price entry?")) return;
+    try {
+      await axios.delete(`${API_URL}/api/admin/prices/${id}`, {
+        headers: { 'x-admin-pin': adminPin }
+      });
+      setFeedback({ type: 'success', text: 'Price item deleted successfully!' });
+      fetchMarketPrices(); // Refresh the list instantly
+    } catch (err) {
+      setFeedback({ type: 'error', text: 'Failed to delete price item.' });
+    }
+  };
 
   const [pendingDeposits, setPendingDeposits] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -449,6 +482,7 @@ export default function AdminDashboard() {
     if (activeAdminTab === 'orders') fetchPendingOrders();
     if (activeAdminTab === 'deposits') fetchPendingDeposits();
     if (activeAdminTab === 'pools') fetchPools();
+    if (activeAdminTab === 'prices') fetchMarketPrices();
   }, [activeAdminTab]);
 
   const updateLocationCategory = async (categoryName, updatedArray) => {
@@ -832,102 +866,142 @@ export default function AdminDashboard() {
 
       {/* TAB: PRICES */}
       {activeAdminTab === 'prices' && (
-        <form onSubmit={handleUpdatePrice} className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs max-w-xl mx-auto space-y-4">
-          <h3 className="font-extrabold text-slate-900 text-base border-b border-slate-100 pb-2">Log Market Price</h3>
-          
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-xs font-semibold text-slate-600 uppercase tracking-wider block mb-1">Item Name</label>
-              <input type="text" value={itemName} onChange={(e) => setItemName(e.target.value)} placeholder="e.g. Garri Ijebu" required className="w-full p-2.5 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 outline-none" />
+        <div className="space-y-6 max-w-4xl mx-auto">
+          {/* Your existing Log Price Form */}
+          <form onSubmit={handleUpdatePrice} className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-4">
+            <h3 className="font-extrabold text-slate-900 text-base border-b border-slate-100 pb-2">Log Market Price</h3>
+            
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-semibold text-slate-600 uppercase tracking-wider block mb-1">Item Name</label>
+                <input type="text" value={itemName} onChange={(e) => setItemName(e.target.value)} placeholder="e.g. Garri Ijebu" required className="w-full p-2.5 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 outline-none" />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-slate-600 uppercase tracking-wider block mb-1">Brand / Variant</label>
+                <input type="text" value={brandOrVariant} onChange={(e) => setBrandOrVariant(e.target.value)} placeholder="e.g. Dangote" className="w-full p-2.5 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 outline-none" />
+              </div>
             </div>
-            <div>
-              <label className="text-xs font-semibold text-slate-600 uppercase tracking-wider block mb-1">Brand / Variant</label>
-              <input type="text" value={brandOrVariant} onChange={(e) => setBrandOrVariant(e.target.value)} placeholder="e.g. Dangote" className="w-full p-2.5 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 outline-none" />
-            </div>
-          </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-xs font-semibold text-slate-600 uppercase tracking-wider block mb-1">Category</label>
-              <select value={category} onChange={(e) => setCategory(e.target.value)} className="w-full p-2.5 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 outline-none bg-white">
-                <option value="Grain">Grains & Legumes</option>
-                <option value="Foodstuff">Foodstuff & Staples</option>
-                <option value="Tubers">Tubers</option>
-                <option value="Produce">Fresh Produce & Herbs</option>
-                <option value="Oils & Liquids">Oils & Liquids</option>
-                <option value="Pasta & Noodles">Pasta & Noodles</option>
-                <option value="Proteins">Fish, Meat & Poultry</option>
-                <option value="Beverages">Beverages & Provisions</option>
-                <option value="Restaurants">Restaurants & Meals</option>
-              </select>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-semibold text-slate-600 uppercase tracking-wider block mb-1">Category</label>
+                <select value={category} onChange={(e) => setCategory(e.target.value)} className="w-full p-2.5 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 outline-none bg-white">
+                  <option value="Grain">Grains & Legumes</option>
+                  <option value="Foodstuff">Foodstuff & Staples</option>
+                  <option value="Tubers">Tubers</option>
+                  <option value="Produce">Fresh Produce & Herbs</option>
+                  <option value="Oils & Liquids">Oils & Liquids</option>
+                  <option value="Pasta & Noodles">Pasta & Noodles</option>
+                  <option value="Proteins">Fish, Meat & Poultry</option>
+                  <option value="Beverages">Beverages & Provisions</option>
+                  <option value="Restaurants">Restaurants & Meals</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-slate-600 uppercase tracking-wider block mb-1">Measurement Unit</label>
+                <select value={unit} onChange={(e) => setUnit(e.target.value)} className="w-full p-2.5 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 outline-none bg-white">
+                  <option value="full_bag">Full Bag (50kg)</option>
+                  <option value="half_bag">1/2 Bag (Half Bag)</option>
+                  <option value="1/4_bag">1/4 Bag (Quarter Bag)</option>
+                  <option value="1/8_bag">1/8 Bag</option>
+                  <option value="paint_rubber">Paint Rubber</option>
+                  <option value="mudu">Mudu / Module</option>
+                  <option value="carton">Carton</option>
+                  <option value="pack">Pack</option>
+                  <option value="roll">Roll (Beverages / Sachets)</option>
+                  <option value="refill">Refill (Water / Gas)</option>
+                  <option value="25_litres">25 Litres (Keg)</option>
+                  <option value="12.5_litres">12.5 Litres</option>
+                  <option value="5_litres">5 Litres</option>
+                  <option value="75cl">75cl Bottle</option>
+                  <option value="kg">1 Kilogram (1kg)</option>
+                  <option value="1/2kg">1/2 Kilogram (0.5kg)</option>
+                  <option value="tuber">Tuber (Yam)</option>
+                  <option value="pieces">Pieces (Wara, Ponmo)</option>
+                  <option value="plate">Plate (Meals)</option>
+                  <option value="unit">Unit</option>
+                </select>
+              </div>
             </div>
-            <div>
-              <label className="text-xs font-semibold text-slate-600 uppercase tracking-wider block mb-1">Measurement Unit</label>
-              <select value={unit} onChange={(e) => setUnit(e.target.value)} className="w-full p-2.5 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 outline-none bg-white">
-                <option value="full_bag">Full Bag (50kg)</option>
-                <option value="half_bag">1/2 Bag (Half Bag)</option>
-                <option value="1/4_bag">1/4 Bag (Quarter Bag)</option>
-                <option value="1/8_bag">1/8 Bag</option>
-                <option value="paint_rubber">Paint Rubber</option>
-                <option value="mudu">Mudu / Module</option>
-                <option value="carton">Carton</option>
-                <option value="pack">Pack</option>
-                <option value="roll">Roll (Beverages / Sachets)</option>
-                <option value="refill">Refill (Water / Gas)</option>
-                <option value="25_litres">25 Litres (Keg)</option>
-                <option value="12.5_litres">12.5 Litres</option>
-                <option value="5_litres">5 Litres</option>
-                <option value="75cl">75cl Bottle</option>
-                <option value="kg">1 Kilogram (1kg)</option>
-                <option value="1/2kg">1/2 Kilogram (0.5kg)</option>
-                <option value="tuber">Tuber (Yam)</option>
-                <option value="pieces">Pieces (Wara, Ponmo)</option>
-                <option value="plate">Plate (Meals)</option>
-                <option value="unit">Unit</option>
-              </select>
+
+            <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" checked={isVariableBudget} onChange={(e) => setIsVariableBudget(e.target.checked)} className="w-4 h-4 text-emerald-600 rounded focus:ring-emerald-500 cursor-pointer" />
+                <span className="text-xs font-bold text-slate-800">Variable Budget Item (Buyer specifies custom ₦ amount, e.g. Tomatoes)</span>
+              </label>
             </div>
-          </div>
 
-          <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" checked={isVariableBudget} onChange={(e) => setIsVariableBudget(e.target.checked)} className="w-4 h-4 text-emerald-600 rounded focus:ring-emerald-500 cursor-pointer" />
-              <span className="text-xs font-bold text-slate-800">Variable Budget Item (Buyer specifies custom ₦ amount, e.g. Tomatoes)</span>
-            </label>
-          </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-semibold text-slate-600 uppercase tracking-wider block mb-1">Primary Market Hub</label>
+                <select value={primaryMarket} onChange={(e) => setPrimaryMarket(e.target.value)} className="w-full p-2.5 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 outline-none bg-white">
+                  {[...new Set([...(locations.markets||[]), ...(locations.supermarkets||[]), ...(locations.restaurants||[])])].map((loc, i) => (
+                    <option key={i} value={loc}>{loc}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-slate-600 uppercase tracking-wider block mb-1">Fallback Market Hub</label>
+                <select value={fallbackMarket} onChange={(e) => setFallbackMarket(e.target.value)} className="w-full p-2.5 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 outline-none bg-white">
+                  {[...new Set([...(locations.markets||[]), ...(locations.supermarkets||[]), ...(locations.restaurants||[])])].map((loc, i) => (
+                    <option key={i} value={loc}>{loc}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-xs font-semibold text-slate-600 uppercase tracking-wider block mb-1">Primary Market Hub</label>
-              <select value={primaryMarket} onChange={(e) => setPrimaryMarket(e.target.value)} className="w-full p-2.5 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 outline-none bg-white">
-                {[...new Set([...(locations.markets||[]), ...(locations.supermarkets||[]), ...(locations.restaurants||[])])].map((loc, i) => (
-                  <option key={i} value={loc}>{loc}</option>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-semibold text-slate-600 uppercase tracking-wider block mb-1">Min Price (₦)</label>
+                <input type="number" value={minPrice} onChange={(e) => setMinPrice(e.target.value)} required className="w-full p-2.5 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 outline-none" />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-slate-600 uppercase tracking-wider block mb-1">Max Price (₦)</label>
+                <input type="number" value={maxPrice} onChange={(e) => setMaxPrice(e.target.value)} required className="w-full p-2.5 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 outline-none" />
+              </div>
+            </div>
+            <button type="submit" disabled={isSubmitting} className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold py-3.5 rounded-xl text-xs transition cursor-pointer shadow-md">
+              {isSubmitting ? 'Updating...' : 'Publish Market Price Index 📊'}
+            </button>
+          </form>
+
+          {/* 🌟 NEW: MANAGE ACTIVE PRICES SECTION */}
+          <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-4">
+            <div className="flex justify-between items-center border-b border-slate-100 pb-2">
+              <h3 className="font-extrabold text-slate-900 text-base">
+                Manage Active Market Prices
+              </h3>
+              <button onClick={fetchMarketPrices} className="text-xs font-bold text-emerald-600 cursor-pointer">
+                {isFetchingPrices ? 'Loading...' : '🔄 Refresh'}
+              </button>
+            </div>
+            
+            {marketPrices.length === 0 && !isFetchingPrices ? (
+              <p className="text-xs text-slate-500 text-center py-4">No prices logged yet.</p>
+            ) : (
+              <div className="space-y-2 max-h-96 overflow-y-auto custom-scrollbar pr-2">
+                {marketPrices.map(price => (
+                  <div key={price.id} className="bg-slate-50 p-3 rounded-xl border border-slate-200 flex justify-between items-center gap-3 hover:bg-slate-100 transition">
+                    <div>
+                      <div className="font-bold text-sm text-slate-900 capitalize">
+                        {price.item_name} <span className="text-emerald-700 text-xs bg-emerald-100 px-2 py-0.5 rounded-full ml-1">{price.unit}</span>
+                      </div>
+                      <div className="text-[11px] font-semibold text-slate-500 mt-1">
+                        ₦{Number(price.min_price_ngn).toLocaleString()} - ₦{Number(price.max_price_ngn).toLocaleString()} • {price.sourcing_market}
+                      </div>
+                    </div>
+                    <button 
+                      onClick={() => handleDeletePrice(price.id)} 
+                      className="bg-red-100 text-red-600 hover:bg-red-200 hover:text-red-700 font-bold px-4 py-2 rounded-xl text-xs transition cursor-pointer shadow-xs whitespace-nowrap"
+                    >
+                      🗑️ Delete
+                    </button>
+                  </div>
                 ))}
-              </select>
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-slate-600 uppercase tracking-wider block mb-1">Fallback Market Hub</label>
-              <select value={fallbackMarket} onChange={(e) => setFallbackMarket(e.target.value)} className="w-full p-2.5 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 outline-none bg-white">
-                {[...new Set([...(locations.markets||[]), ...(locations.supermarkets||[]), ...(locations.restaurants||[])])].map((loc, i) => (
-                  <option key={i} value={loc}>{loc}</option>
-                ))}
-              </select>
-            </div>
+              </div>
+            )}
           </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-xs font-semibold text-slate-600 uppercase tracking-wider block mb-1">Min Price (₦)</label>
-              <input type="number" value={minPrice} onChange={(e) => setMinPrice(e.target.value)} required className="w-full p-2.5 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 outline-none" />
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-slate-600 uppercase tracking-wider block mb-1">Max Price (₦)</label>
-              <input type="number" value={maxPrice} onChange={(e) => setMaxPrice(e.target.value)} required className="w-full p-2.5 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 outline-none" />
-            </div>
-          </div>
-          <button type="submit" disabled={isSubmitting} className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold py-3.5 rounded-xl text-xs transition cursor-pointer shadow-md">
-            {isSubmitting ? 'Updating...' : 'Publish Market Price Index 📊'}
-          </button>
-        </form>
+        </div>
       )}
 
       {/* 🌟 POOLS TAB */}

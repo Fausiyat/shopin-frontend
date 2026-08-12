@@ -12,16 +12,16 @@ export default function DeliveryPooling({ activeOrderId, onShuttleSelected }) {
     fetchDeliveryPools();
   }, []);
 
+  // 🌟 NEW PRICING: ₦1,000 for Inner Zone, ₦1,500 for Outer Zone
   const getZoneFee = (routeName) => {
-    if (!routeName) return 1800;
+    if (!routeName) return 1500;
     const nameLower = routeName.toLowerCase();
     if (nameLower.includes('al-hikmah') || nameLower.includes('alhikmah') || nameLower.includes('apalara')) {
-      return 1300;
+      return 1000;
     }
-    return 1800; 
+    return 1500; 
   };
 
-  // 🌟 Max capacity reduced to 5 seats!
   const getSampleShuttles = () => [
     {
       id: 'ROUTE-1',
@@ -31,7 +31,7 @@ export default function DeliveryPooling({ activeOrderId, onShuttleSelected }) {
       destination_zone: 'Al-Hikmah / Apalara',
       max_capacity: 5,
       current_orders: 0, 
-      base_shuttle_fee: 1300, 
+      base_shuttle_fee: 1000, 
       status: 'OPEN'
     },
     {
@@ -42,7 +42,7 @@ export default function DeliveryPooling({ activeOrderId, onShuttleSelected }) {
       destination_zone: 'Irewolede / Unity',
       max_capacity: 5,
       current_orders: 0, 
-      base_shuttle_fee: 1800, 
+      base_shuttle_fee: 1500, 
       status: 'OPEN'
     },
     {
@@ -53,7 +53,7 @@ export default function DeliveryPooling({ activeOrderId, onShuttleSelected }) {
       destination_zone: 'Tanke / Unilorin',
       max_capacity: 5,
       current_orders: 0, 
-      base_shuttle_fee: 1800, 
+      base_shuttle_fee: 1500, 
       status: 'OPEN'
     },
     {
@@ -64,7 +64,7 @@ export default function DeliveryPooling({ activeOrderId, onShuttleSelected }) {
       destination_zone: 'Challenge / Fate',
       max_capacity: 5,
       current_orders: 0, 
-      base_shuttle_fee: 1800, 
+      base_shuttle_fee: 1500, 
       status: 'OPEN'
     }
   ];
@@ -150,7 +150,7 @@ export default function DeliveryPooling({ activeOrderId, onShuttleSelected }) {
           <span>🚀</span> Express Delivery Corridors
         </h2>
         <p className="text-xs text-blue-800 mt-1 font-medium">
-          Batch your delivery route with other buyers from Mandate Market to lower your dispatch fee to shared zone rates (₦1,300 - ₦1,800).
+          Batch your delivery route with other buyers from Mandate Market to lower your dispatch fee to shared zone rates (₦1,000 - ₦1,500).
         </p>
         
         <div className="mt-4 bg-blue-100/80 border border-blue-300 p-3 rounded-xl flex items-start gap-3">
@@ -173,7 +173,7 @@ export default function DeliveryPooling({ activeOrderId, onShuttleSelected }) {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {deliveryPools.map((pool) => {
-          const maxCap = Number(pool.max_capacity || 5); // Fallback changed to 5 as well to match
+          const maxCap = Number(pool.max_capacity || 5); 
           const currentOrders = Number(pool.current_orders || 0);
           const capacityLeft = Math.max(0, maxCap - currentOrders);
           const progressPct = Math.min(100, Math.round((currentOrders / maxCap) * 100));

@@ -107,15 +107,18 @@ export default function CheckoutModal({
     ? items.reduce((sum, item, idx) => sum + calculateItemCost(item, idx), 0) 
     : 0;
 
-  // 🚚 Dynamic Delivery Fee Calculation
-  let currentDeliveryFee = 0;
+  // 🚀 DYNAMIC DELIVERY FEE CALCULATOR
+  let baseDeliveryFee = 2000; // Default Outer Zone (Tanke, Challenge, Irewolede)
+  
   if (selectedZone === 'alhikmah') {
-    currentDeliveryFee = useShuttle ? 1300 : 1500;
-  } else if (selectedZone === 'unilorin') {
-    currentDeliveryFee = useShuttle ? 1800 : 2000;
+    baseDeliveryFee = 1500; // Inner Zone
   } else if (selectedZone === 'custom_kwara') {
-    currentDeliveryFee = 3000; 
+    baseDeliveryFee = 3000; // 🔥 Areas outside the selected routes
   }
+
+  // Apply the ₦500 Shuttle Discount (Shuttles are disabled for custom_kwara)
+  const isShuttleEligible = useShuttle && selectedZone !== 'custom_kwara';
+  const currentDeliveryFee = isShuttleEligible ? (baseDeliveryFee - 500) : baseDeliveryFee;
 
   // 🌟 UPGRADE: Calculate processing fee and add it to Grand Total
   const currentProcessingFee = needsProcessing ? PROCESSING_FEE : 0;
@@ -452,7 +455,7 @@ export default function CheckoutModal({
                     
                     <div className="flex justify-between items-center text-[10px] px-1">
                       <span className="text-blue-700 italic">ShopIn Fee: ₦500 applied.</span>
-                      <span className="text-blue-900 font-bold">Shuttle Fee: ₦{selectedZone === 'alhikmah' ? '1,300' : '1,800'}</span>
+                      <span className="text-blue-900 font-bold">Shuttle Fee: ₦{selectedZone === 'alhikmah' ? '1,000' : '1,500'}</span>
                     </div>
 
                     {/* 🔥 THE NEW WARNING BANNER IN CHECKOUT */}
@@ -520,7 +523,10 @@ export default function CheckoutModal({
 
               <div className="flex justify-between">
                 <span>Delivery Fee:</span>
-                <span className="font-semibold text-slate-800">₦{currentDeliveryFee.toLocaleString()}</span>
+                <span className="font-semibold text-slate-800">
+                  ₦{currentDeliveryFee.toLocaleString()} 
+                  {selectedZone === 'custom_kwara' && ' (Outside Route)'}
+                </span>
               </div>
               <div className="flex justify-between">
                 <span>ShopIn Service Fee:</span>

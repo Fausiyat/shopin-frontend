@@ -906,6 +906,8 @@ export default function AdminDashboard() {
                   <option value="1/8_bag">1/8 Bag</option>
                   <option value="paint_rubber">Paint Rubber</option>
                   <option value="mudu">Mudu / Module</option>
+                  <option value="basket">Full Basket</option>
+                  <option value="dozen">One Dozen (12 pcs)</option>
                   <option value="carton">Carton</option>
                   <option value="crate">Crate</option>
                   <option value="pack">Pack</option>

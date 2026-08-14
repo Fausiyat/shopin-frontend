@@ -82,8 +82,16 @@ export default function CheckoutModal({
           if (res.data && res.data.data) {
             const priceMap = {};
             res.data.data.forEach(item => {
-              // Store prices strictly by lowercase item name for easy matching
-              priceMap[item.item_name.toLowerCase()] = parseFloat(item.max_price_ngn);
+              const nameKey = item.item_name.toLowerCase();
+              const unitKey = (item.unit || '').toLowerCase();
+              
+              // 1. Store EXACT match (e.g., 'beans_paint_rubber')
+              priceMap[`${nameKey}_${unitKey}`] = parseFloat(item.max_price_ngn);
+              
+              // 2. Store general fallback (in case it needs to do fractional math)
+              if (!priceMap[nameKey]) {
+                priceMap[nameKey] = parseFloat(item.max_price_ngn);
+              }
             });
             setLivePrices(priceMap);
           }
@@ -129,84 +137,96 @@ export default function CheckoutModal({
     // 🌟 COMPREHENSIVE KWARA MARKET PRICING ENGINE
     const itemNameKey = cleanItemTitle(item.name || item.item_name).toLowerCase();
     const unitKey = (item.unit || '').toLowerCase();
-    const baseAdminPrice = livePrices[itemNameKey] || ESTIMATED_PRICES.full_bag;
+    
+    // 🚀 NEW: CHECK FOR EXACT MATCH FIRST
+    const exactAdminPrice = livePrices[`${itemNameKey}_${unitKey}`];
+    let calculatedUnitPrice = 0;
 
-    let calculatedUnitPrice = baseAdminPrice;
+    if (exactAdminPrice) {
+      // BINGO! You logged this exact item and unit in the admin. Use it directly without extra math.
+      calculatedUnitPrice = exactAdminPrice;
+    } else {
+      // IF NO EXACT MATCH: Fallback to the smart fractional math engine
+      const baseAdminPrice = livePrices[`${itemNameKey}_full_bag`] || livePrices[itemNameKey] || ESTIMATED_PRICES.full_bag;
+      calculatedUnitPrice = baseAdminPrice;
 
-    // 1. KWARA GRAINS (Paint Rubber & Mudu)
-    if (unitKey.includes('paint_rubber') || unitKey.includes('paint')) {
-      const oneEighthBag = (baseAdminPrice * 0.125);
-      calculatedUnitPrice = 1.5 * oneEighthBag; 
-    } 
-    else if (unitKey.includes('mudu') || unitKey.includes('module')) {
-      const paintRubberPrice = 1.5 * (baseAdminPrice * 0.125);
-      calculatedUnitPrice = paintRubberPrice / 3; 
-    }
-    // 2. BAG FRACTIONS
-    else if (unitKey.includes('half_bag') || unitKey.includes('1/2')) {
-      calculatedUnitPrice = baseAdminPrice * 0.5; 
-    }
-    else if (unitKey.includes('1/4_bag') || unitKey.includes('1/4')) {
-      calculatedUnitPrice = baseAdminPrice * 0.25; 
-    }
-    else if (unitKey.includes('1/8_bag') || unitKey.includes('1/8')) {
-      calculatedUnitPrice = baseAdminPrice * 0.125; 
-    }
-    // 3. MEAT & PROTEINS (1kg & 1/2kg)
-    else if (unitKey.includes('1/2kg') || unitKey.includes('0.5kg')) {
-      const oneKgPrice = livePrices[itemNameKey] || ESTIMATED_PRICES.kg;
-      calculatedUnitPrice = oneKgPrice * 0.5; // 50% of 1kg price
-    }
-    else if (unitKey.includes('kg')) {
-      calculatedUnitPrice = livePrices[itemNameKey] || ESTIMATED_PRICES.kg;
-    }
-    // 4. TUBERS & PIECES (Yam, Wara, Ponmo)
-    else if (unitKey.includes('tuber')) {
-      calculatedUnitPrice = livePrices[itemNameKey] || ESTIMATED_PRICES.tuber;
-    }
-    else if (unitKey.includes('piece') || unitKey.includes('pieces')) {
-      calculatedUnitPrice = livePrices[itemNameKey] || ESTIMATED_PRICES.pieces;
-    }
-    // 5. LIQUIDS & KEGS
-    else if (unitKey.includes('25_litres') || unitKey.includes('25l')) {
-      calculatedUnitPrice = livePrices[itemNameKey] || ESTIMATED_PRICES['25_litres'];
-    }
-    else if (unitKey.includes('12.5_litres') || unitKey.includes('12.5l')) {
-      const keg25 = livePrices[itemNameKey] || ESTIMATED_PRICES['25_litres'];
-      calculatedUnitPrice = keg25 * 0.5; 
-    }
-    else if (unitKey.includes('5_litres') || unitKey.includes('5l')) {
-      const keg25 = livePrices[itemNameKey] || ESTIMATED_PRICES['25_litres'];
-      calculatedUnitPrice = keg25 * 0.2; 
-    }
-    else if (unitKey.includes('75cl')) {
-      calculatedUnitPrice = livePrices[itemNameKey] || ESTIMATED_PRICES['75cl'];
-    }
-    // 6. CARTONS & PACKS
-    // 4. CARTONS, PACKS, ROLLS & REFILLS (Milo, Milk, Beverages)
-    else if (unitKey.includes('roll') || unitKey.includes('refill') || unitKey.includes('refilled')) {
-      calculatedUnitPrice = livePrices[itemNameKey] || ESTIMATED_PRICES.roll || ESTIMATED_PRICES.refill;
-    }
-    else if (unitKey.includes('pack')) {
-      const cartonPrice = livePrices[itemNameKey] || ESTIMATED_PRICES.carton;
-      let packsPerCarton = 20; 
-      if (itemNameKey.includes('noodle') || itemNameKey.includes('indomie')) {
-        packsPerCarton = 40; 
+      // 1. KWARA GRAINS (Paint Rubber & Mudu)
+      if (unitKey.includes('paint_rubber') || unitKey.includes('paint')) {
+        const oneEighthBag = (baseAdminPrice * 0.125);
+        calculatedUnitPrice = 1.5 * oneEighthBag; 
+      } 
+      else if (unitKey.includes('mudu') || unitKey.includes('module')) {
+        const paintRubberPrice = 1.5 * (baseAdminPrice * 0.125);
+        calculatedUnitPrice = paintRubberPrice / 3; 
       }
-      calculatedUnitPrice = cartonPrice / packsPerCarton;
-    }
-    else if (unitKey.includes('carton')) {
-      calculatedUnitPrice = livePrices[itemNameKey] || ESTIMATED_PRICES.carton;
-    }
-    // 7. STANDARD FALLBACK
-    else {
-      const unitMultiplier = ESTIMATED_PRICES[unitKey] ? (ESTIMATED_PRICES[unitKey] / ESTIMATED_PRICES.full_bag) : 1;
-      calculatedUnitPrice = baseAdminPrice * unitMultiplier;
+      // 2. BAG FRACTIONS
+      else if (unitKey.includes('half_bag') || unitKey.includes('1/2')) {
+        calculatedUnitPrice = baseAdminPrice * 0.5; 
+      }
+      else if (unitKey.includes('1/4_bag') || unitKey.includes('1/4')) {
+        calculatedUnitPrice = baseAdminPrice * 0.25; 
+      }
+      else if (unitKey.includes('1/8_bag') || unitKey.includes('1/8')) {
+        calculatedUnitPrice = baseAdminPrice * 0.125; 
+      }
+      // 3. MEAT & PROTEINS (1kg & 1/2kg)
+      else if (unitKey.includes('1/2kg') || unitKey.includes('0.5kg')) {
+        const oneKgPrice = livePrices[`${itemNameKey}_kg`] || livePrices[itemNameKey] || ESTIMATED_PRICES.kg;
+        calculatedUnitPrice = oneKgPrice * 0.5;
+      }
+      else if (unitKey.includes('kg')) {
+        calculatedUnitPrice = livePrices[itemNameKey] || ESTIMATED_PRICES.kg;
+      }
+      // 4. TUBERS, PIECES & BUNCHES
+      else if (unitKey.includes('tuber')) {
+        calculatedUnitPrice = livePrices[itemNameKey] || ESTIMATED_PRICES.tuber;
+      }
+      else if (unitKey.includes('piece') || unitKey.includes('pieces')) {
+        calculatedUnitPrice = livePrices[itemNameKey] || ESTIMATED_PRICES.pieces;
+      }
+      else if (unitKey.includes('bunch')) {
+        calculatedUnitPrice = livePrices[itemNameKey] || ESTIMATED_PRICES.bunch || 1500;
+      }
+      // 5. LIQUIDS & KEGS
+      else if (unitKey.includes('25_litres') || unitKey.includes('25l')) {
+        calculatedUnitPrice = livePrices[itemNameKey] || ESTIMATED_PRICES['25_litres'];
+      }
+      else if (unitKey.includes('12.5_litres') || unitKey.includes('12.5l')) {
+        const keg25 = livePrices[`${itemNameKey}_25_litres`] || livePrices[itemNameKey] || ESTIMATED_PRICES['25_litres'];
+        calculatedUnitPrice = keg25 * 0.5; 
+      }
+      else if (unitKey.includes('5_litres') || unitKey.includes('5l')) {
+        const keg25 = livePrices[`${itemNameKey}_25_litres`] || livePrices[itemNameKey] || ESTIMATED_PRICES['25_litres'];
+        calculatedUnitPrice = keg25 * 0.2; 
+      }
+      else if (unitKey.includes('75cl')) {
+        calculatedUnitPrice = livePrices[itemNameKey] || ESTIMATED_PRICES['75cl'];
+      }
+      // 6. CARTONS, PACKS, ROLLS & REFILLS
+      else if (unitKey.includes('roll') || unitKey.includes('refill') || unitKey.includes('refilled')) {
+        calculatedUnitPrice = livePrices[itemNameKey] || ESTIMATED_PRICES.roll || ESTIMATED_PRICES.refill;
+      }
+      else if (unitKey.includes('pack')) {
+        const cartonPrice = livePrices[`${itemNameKey}_carton`] || livePrices[itemNameKey] || ESTIMATED_PRICES.carton;
+        let packsPerCarton = 20; 
+        if (itemNameKey.includes('noodle') || itemNameKey.includes('indomie')) {
+          packsPerCarton = 40; 
+        }
+        calculatedUnitPrice = cartonPrice / packsPerCarton;
+      }
+      else if (unitKey.includes('carton')) {
+        calculatedUnitPrice = livePrices[itemNameKey] || ESTIMATED_PRICES.carton;
+      }
+      // 7. STANDARD FALLBACK
+      else {
+        const unitMultiplier = ESTIMATED_PRICES[unitKey] ? (ESTIMATED_PRICES[unitKey] / ESTIMATED_PRICES.full_bag) : 1;
+        calculatedUnitPrice = baseAdminPrice * unitMultiplier;
+      }
     }
 
     return (item.quantity || 1) * calculatedUnitPrice;
-  };
-
+    };
+    
   const estimatedItemCost = Array.isArray(items) && items.length > 0 
     ? items.reduce((sum, item, idx) => sum + calculateItemCost(item, idx), 0) 
     : 0;

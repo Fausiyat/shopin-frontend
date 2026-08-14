@@ -7,7 +7,7 @@ const SAMPLE_ADMIN_PRODUCTS = [
   { id: 'v-prod-6', product_name: 'Item 7 Chicken & Chips', category: 'Restaurants', price_ngn: 2500, location: 'Tanke Hub' },
   { id: 'v-prod-7', product_name: 'Aroma Amala & Ewedu', category: 'Restaurants', price_ngn: 1800, location: 'Challenge Hub' },
   { id: 'v-prod-8', product_name: 'Shoprite Fresh Bread', category: 'Supermarkets', price_ngn: 1200, location: 'Fate Hub' },
-  { id: 'v-prod-9', product_name: 'Garri Ijebu (Paint Rubber)', category: 'Local Markets', price_ngn: 2800, location: 'Mandate Market' }
+  { id: 'v-prod-9', product_name: 'Garri (Paint Rubber)', category: 'Local Markets', price_ngn: 2800, location: 'Mandate Market' }
 ];
 
 function AdminProductsManager({ API_URL, adminPin }) {
@@ -236,7 +236,6 @@ function PendingVendorsManager({ API_URL, adminPin }) {
   );
 }
 
-// 🌟 NEW CATEGORY MANAGER COMPONENT
 function CategoryManager({ API_URL, adminPin }) {
   const [categories, setCategories] = useState([]);
   const [newCategoryName, setNewCategoryName] = useState('');
@@ -349,15 +348,43 @@ export default function AdminDashboard() {
   const API_URL = import.meta.env.VITE_API_URL || 'https://shopin-kwara-backend.onrender.com';
   const adminPin = localStorage.getItem('SHOPIN_ADMIN_PIN') || '1234';
 
+  // 🌟 NEW: CREDIT WALLET STATE
+  const [creditShopinId, setCreditShopinId] = useState('');
+  const [creditAmount, setCreditAmount] = useState('');
+
+  const handleCreditWallet = async (e) => {
+    e.preventDefault();
+    if (!creditShopinId || !creditAmount) return;
+    
+    const confirmApprove = window.confirm(`Are you sure you want to credit ₦${creditAmount} to ${creditShopinId}?`);
+    if (!confirmApprove) return;
+    
+    setIsSubmitting(true);
+    try {
+      await axios.post(`${API_URL}/api/admin/credit-wallet`, {
+        shopin_id: creditShopinId.trim(),
+        amount: parseFloat(creditAmount)
+      }, {
+        headers: { 'x-admin-pin': adminPin }
+      });
+      setFeedback({ type: 'success', text: `Successfully credited ₦${creditAmount} to ${creditShopinId}!` });
+      setCreditShopinId('');
+      setCreditAmount('');
+    } catch (err) {
+      setFeedback({ type: 'error', text: 'Failed to credit wallet. Please try again.' });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const [locations, setLocations] = useState({ markets: [], supermarkets: [], restaurants: [] });
   const [newMarket, setNewMarket] = useState('');
   const [newSupermarket, setNewSupermarket] = useState('');
   const [newRestaurant, setNewRestaurant] = useState('');
-  // 🌟 NEW STATE: For managing live market prices
+  
   const [marketPrices, setMarketPrices] = useState([]);
   const [isFetchingPrices, setIsFetchingPrices] = useState(false);
 
-  // Fetch prices from the ticker
   const fetchMarketPrices = async () => {
     setIsFetchingPrices(true);
     try {
@@ -373,7 +400,6 @@ export default function AdminDashboard() {
     }
   };
 
-  // Delete a price entry securely
   const handleDeletePrice = async (id) => {
     if (!window.confirm("Are you sure you want to permanently delete this price entry?")) return;
     try {
@@ -381,7 +407,7 @@ export default function AdminDashboard() {
         headers: { 'x-admin-pin': adminPin }
       });
       setFeedback({ type: 'success', text: 'Price item deleted successfully!' });
-      fetchMarketPrices(); // Refresh the list instantly
+      fetchMarketPrices(); 
     } catch (err) {
       setFeedback({ type: 'error', text: 'Failed to delete price item.' });
     }
@@ -417,7 +443,6 @@ export default function AdminDashboard() {
   const [newShopperPin, setNewShopperPin] = useState('');
   const [shopperPinFeedback, setShopperPinFeedback] = useState(null);
 
-  // 🌟 POOLS STATE
   const [poolItemName, setPoolItemName] = useState('');
   const [poolTargetItem, setPoolTargetItem] = useState('');
   const [poolPricePerSlot, setPoolPricePerSlot] = useState('');
@@ -427,7 +452,6 @@ export default function AdminDashboard() {
   const [editingPoolId, setEditingPoolId] = useState(null);
   const [editPoolData, setEditPoolData] = useState({});
 
-  // 🌟 SAFE FETCH FUNCTIONS
   const fetchPools = async () => {
     try {
       const res = await axios.get(`${API_URL}/api/pools`);
@@ -471,6 +495,24 @@ export default function AdminDashboard() {
       setPendingOrders(res.data?.orders || []);
     } catch (err) {
       console.warn("Could not fetch orders.");
+    }
+  };
+
+  // 🌟 NEW: FUNCTION TO UPDATE ORDER STATUS
+  const handleUpdateOrderStatus = async (orderId, newStatus) => {
+    try {
+      if (shopinApi && shopinApi.updateOrderStatus) {
+         await shopinApi.updateOrderStatus(orderId, newStatus, adminPin);
+      } else {
+         await axios.put(`${API_URL}/api/admin/orders/${orderId}/status`, 
+           { order_status: newStatus }, 
+           { headers: { 'x-admin-pin': adminPin } }
+         );
+      }
+      setFeedback({ type: 'success', text: `Order status updated to ${newStatus}` });
+      fetchPendingOrders(); 
+    } catch (err) {
+      setFeedback({ type: 'error', text: 'Failed to update order status.' });
     }
   };
 
@@ -704,7 +746,7 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* NEW TAB: LOCATIONS MANAGER */}
+      {/* TAB: LOCATIONS MANAGER */}
       {activeAdminTab === 'locations' && (
         <div className="space-y-6 max-w-4xl mx-auto">
           <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-5">
@@ -755,12 +797,11 @@ export default function AdminDashboard() {
                 <button onClick={() => handleAddLocation('restaurants', newRestaurant, setNewRestaurant)} className="bg-slate-900 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-slate-800 cursor-pointer">Add</button>
               </div>
             </div>
-
           </div>
         </div>
       )}
 
-      {/* NEW TAB: CATEGORIES MANAGER */}
+      {/* TAB: CATEGORIES MANAGER */}
       {activeAdminTab === 'categories' && (
         <CategoryManager API_URL={API_URL} adminPin={adminPin} />
       )}
@@ -811,8 +852,26 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* TAB: USERS */}
-      {activeAdminTab === 'users' && <UserTracker />}
+      {/* 🌟 TAB: USERS & WALLET REFUNDS */}
+      {activeAdminTab === 'users' && (
+        <div className="max-w-4xl mx-auto space-y-6">
+          <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-4">
+            <h3 className="font-extrabold text-slate-900 text-base border-b border-slate-100 pb-2 flex items-center gap-2">
+              <span>💸</span> Credit User Wallet (Refunds & Change)
+            </h3>
+            <p className="text-xs text-slate-500 mb-2">Instantly refund market change or credit a user's Stash Wallet using their ShopIn ID.</p>
+            
+            <form onSubmit={handleCreditWallet} className="flex flex-col sm:flex-row gap-3">
+               <input type="text" value={creditShopinId} onChange={e => setCreditShopinId(e.target.value)} placeholder="User ShopIn ID (e.g. SHP-ILR-1001)" required className="flex-1 p-2.5 border border-slate-300 focus:border-emerald-500 outline-none rounded-xl text-xs font-bold bg-slate-50" />
+               <input type="number" value={creditAmount} onChange={e => setCreditAmount(e.target.value)} placeholder="Amount (₦)" required className="flex-1 p-2.5 border border-slate-300 focus:border-emerald-500 outline-none rounded-xl text-xs font-bold bg-slate-50" />
+               <button type="submit" disabled={isSubmitting} className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-6 py-2.5 rounded-xl text-xs transition cursor-pointer disabled:opacity-50 whitespace-nowrap shadow-sm">
+                 Credit Wallet 💰
+               </button>
+            </form>
+          </div>
+          <UserTracker />
+        </div>
+      )}
 
       {/* TAB: VENDORS */}
       {activeAdminTab === 'vendors' && (
@@ -825,7 +884,7 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* TAB: ORDERS & QUOTES */}
+      {/* 🌟 TAB: ORDERS & QUOTES */}
       {activeAdminTab === 'orders' && (
         <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs max-w-4xl mx-auto space-y-4">
           <h3 className="font-extrabold text-slate-900 text-base border-b border-slate-100 pb-2">Pending Errands Review</h3>
@@ -837,16 +896,47 @@ export default function AdminDashboard() {
                 <div key={ord.id} className="p-4 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between text-xs">
                   <div>
                     <p className="font-bold text-slate-900">{ord.order_code}</p>
-                    <p className="text-slate-600 italic">"{ord.raw_input_text}"</p>
+                    <p className="text-slate-600 italic mt-1">"{ord.raw_input_text}"</p>
                     <p className="font-semibold mt-1">Est. Total: ₦{Number(ord.total_estimated_cost || 0).toLocaleString()}</p>
+                    <p className="text-[10px] text-emerald-700 font-bold mt-1">
+                      Current Status: {ord.order_status || 'PENDING_CONFIRMATION'}
+                    </p>
                   </div>
-                  <button onClick={() => { setOverrideModalOrder(ord); setCustomTotalCost(ord.total_estimated_cost || ''); setCustomDeliveryFee(ord.delivery_fee || ''); setCustomServiceFee(ord.service_fee || ''); }} className="bg-slate-900 text-white font-bold px-4 py-2 rounded-lg cursor-pointer">
-                    Override Quote ✍️
-                  </button>
+                  
+                  <div className="flex flex-col gap-2 items-end">
+                    <select
+                      value={ord.order_status || 'PENDING_CONFIRMATION'}
+                      onChange={(e) => handleUpdateOrderStatus(ord.id, e.target.value)}
+                      className="bg-white border border-slate-300 text-slate-800 rounded-lg p-2 text-[10px] font-bold outline-none cursor-pointer w-44 focus:border-emerald-500 shadow-sm"
+                    >
+                      <option value="PENDING_CONFIRMATION">Pending Confirmation</option>
+                      <option value="SHOPPING">Market Sourcing</option>
+                      <option value="ACTION_REQUIRED">⚠️ Action Required (Balance Up)</option>
+                      <option value="SHUTTLE_DISPATCH">On Corridor Shuttle</option>
+                      <option value="COMPLETED">Delivered</option>
+                    </select>
+
+                    <div className="flex gap-2 w-44">
+                      <button onClick={() => { setOverrideModalOrder(ord); setCustomTotalCost(ord.total_estimated_cost || ''); setCustomDeliveryFee(ord.delivery_fee || ''); setCustomServiceFee(ord.service_fee || ''); }} className="flex-1 bg-slate-900 hover:bg-slate-800 text-white font-bold py-2 rounded-lg cursor-pointer transition shadow-sm text-[10px]">
+                        Override ✍️
+                      </button>
+                      
+                      <a 
+                        href={`https://wa.me/${ord.user_phone || ord.customer_phone || ''}?text=${encodeURIComponent(`Hello! This is ShopIn Admin. There is a slight price update for your order (${ord.order_code}). Please open your ShopIn app to view the details and balance up so your shopper can proceed! 🚀`)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex-1 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 font-bold py-2 rounded-lg cursor-pointer transition shadow-sm text-[10px] text-center flex items-center justify-center"
+                        title="Send WhatsApp Alert"
+                      >
+                        📲 Alert
+                      </a>
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>
           )}
+          
           {overrideModalOrder && (
              <div className="fixed inset-0 bg-slate-900/50 flex items-center justify-center p-4 z-50">
                <form onSubmit={handleSaveQuoteOverride} className="bg-white rounded-2xl p-6 max-w-md w-full space-y-4 shadow-xl">
@@ -855,8 +945,8 @@ export default function AdminDashboard() {
                  <input type="number" value={customDeliveryFee} onChange={(e) => setCustomDeliveryFee(e.target.value)} placeholder="Delivery Fee (₦)" className="w-full p-2.5 border rounded-xl text-xs font-bold" />
                  <input type="number" value={customServiceFee} onChange={(e) => setCustomServiceFee(e.target.value)} placeholder="Service Fee (₦)" className="w-full p-2.5 border rounded-xl text-xs font-bold" />
                  <div className="flex gap-2">
-                   <button type="button" onClick={() => setOverrideModalOrder(null)} className="flex-1 bg-slate-200 py-2.5 rounded-xl font-bold text-xs">Cancel</button>
-                   <button type="submit" className="flex-1 bg-emerald-600 text-white py-2.5 rounded-xl font-bold text-xs">Save</button>
+                   <button type="button" onClick={() => setOverrideModalOrder(null)} className="flex-1 bg-slate-200 py-2.5 rounded-xl font-bold text-xs cursor-pointer">Cancel</button>
+                   <button type="submit" className="flex-1 bg-emerald-600 text-white py-2.5 rounded-xl font-bold text-xs cursor-pointer">Save</button>
                  </div>
                </form>
              </div>
@@ -867,7 +957,6 @@ export default function AdminDashboard() {
       {/* TAB: PRICES */}
       {activeAdminTab === 'prices' && (
         <div className="space-y-6 max-w-4xl mx-auto">
-          {/* Your existing Log Price Form */}
           <form onSubmit={handleUpdatePrice} className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-4">
             <h3 className="font-extrabold text-slate-900 text-base border-b border-slate-100 pb-2">Log Market Price</h3>
             
@@ -972,7 +1061,6 @@ export default function AdminDashboard() {
             </button>
           </form>
 
-          {/* 🌟 NEW: MANAGE ACTIVE PRICES SECTION */}
           <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-4">
             <div className="flex justify-between items-center border-b border-slate-100 pb-2">
               <h3 className="font-extrabold text-slate-900 text-base">
@@ -1011,7 +1099,7 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* 🌟 POOLS TAB */}
+      {/* TAB: POOLS */}
       {activeAdminTab === 'pools' && (
         <div className="max-w-4xl mx-auto space-y-6">
           <form onSubmit={handleCreatePool} className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-4">
@@ -1059,7 +1147,6 @@ export default function AdminDashboard() {
             </button>
           </form>
 
-          {/* 🌟 MANAGE EXISTING POOLS */}
           <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-4">
             <h3 className="font-extrabold text-slate-900 text-base border-b border-slate-100 pb-2">
               Manage Active Food Pools
@@ -1108,7 +1195,6 @@ export default function AdminDashboard() {
                         </div>
                       </>
                     )}
-
                   </div>
                 ))}
               </div>

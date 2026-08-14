@@ -413,6 +413,13 @@ export default function CheckoutModal({
               <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block">
                 Requested Items ({items.length})
               </span>
+              {/* 🌟 NEW: BUY TO BUDGET DISCLAIMER */}
+              <div className="bg-blue-100/70 border border-blue-200 text-blue-900 p-2.5 rounded-xl text-[10px] font-medium leading-relaxed shadow-xs flex items-start gap-2 mb-2">
+                <span className="text-sm">💡</span>
+                <p>
+                  <b>Market Policy:</b> If you override the estimated unit cost to a lower amount, our shoppers will simply <b>buy the exact quantity your custom budget can afford</b> at current market rates. No delays, no stress!
+                </p>
+              </div>
               <div className="space-y-2 max-h-48 overflow-y-auto pr-1 text-xs custom-scrollbar">
                 {Array.isArray(items) && items.length > 0 ? (
                   items.map((item, idx) => {

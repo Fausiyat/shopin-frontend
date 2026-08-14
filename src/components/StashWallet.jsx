@@ -4,10 +4,13 @@ const StashWallet = ({ walletBalance, setWalletBalance }) => {
   const [depositAmount, setDepositAmount] = useState('');
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [pendingDeposits, setPendingDeposits] = useState([]); 
+  
+  // 🌟 NEW: State to hold the sender's account name
+  const [senderName, setSenderName] = useState('');
 
   // Your OPay Details
   const OPAY_ACCOUNT_NUMBER = "8143086509"; 
-  const OPAY_ACCOUNT_NAME = "ShopIn Kwara (Mahmood Fausiyat Ayobami)";
+  const OPAY_ACCOUNT_NAME = "Mahmood Fausiyat Ayobami";
 
   const handleInitiateDeposit = (e) => {
     e.preventDefault();
@@ -20,33 +23,39 @@ const StashWallet = ({ walletBalance, setWalletBalance }) => {
   };
 
   const handleConfirmSent = async () => {
-    // 1. Get the current user's ID
+    // 🌟 Require the sender name before proceeding!
+    if (!senderName.trim()) {
+      alert("Please enter the Account Name you transferred the money from.");
+      return;
+    }
+
     const currentShopinId = localStorage.getItem('SHOPIN_USER_ID') || 'SHP-ILR-1001';
     
     try {
-      // 2. Send the claim to your Render backend
       const API_URL = import.meta.env.VITE_API_URL || 'https://shopin-kwara-backend.onrender.com';
       await fetch(`${API_URL}/api/wallet/request-deposit`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           shopin_id: currentShopinId,
-          amount_ngn: Number(depositAmount)
+          amount_ngn: Number(depositAmount),
+          sender_name: senderName.trim() // 🌟 Sending the new data to the backend!
         })
       });
 
-      // 3. Add to local UI pending list so they see it immediately
       const newPending = {
         id: Date.now(),
         amount: Number(depositAmount),
         date: new Date().toLocaleTimeString(),
-        status: 'Pending Verification'
+        status: 'Pending Verification',
+        sender_name: senderName.trim()
       };
       setPendingDeposits([newPending, ...pendingDeposits]);
 
       alert("Transfer claim submitted! Waiting for Admin verification.");
       setShowTransferModal(false);
       setDepositAmount('');
+      setSenderName(''); // Reset the input
       
     } catch (err) {
       alert("Error submitting claim. Please check your connection.");
@@ -80,11 +89,10 @@ const StashWallet = ({ walletBalance, setWalletBalance }) => {
               placeholder="Amount to deposit"
               value={depositAmount}
               onChange={(e) => setDepositAmount(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none text-sm font-semibold shadow-sm"
+              className="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none text-sm font-semibold shadow-sm bg-white"
             />
           </div>
           
-          {/* Quick Add Buttons */}
           <div className="flex gap-2">
             {[1000, 2000, 5000].map(amt => (
               <button
@@ -118,11 +126,16 @@ const StashWallet = ({ walletBalance, setWalletBalance }) => {
               <div key={dep.id} className="flex justify-between items-center bg-white p-3 rounded-xl border border-orange-100 shadow-sm text-sm">
                 <div>
                   <span className="font-bold text-slate-800">₦{dep.amount.toLocaleString()}</span>
-                  <div className="text-xs text-slate-400">{dep.date}</div>
+                  <div className="text-xs text-slate-400 mt-0.5">
+                    From: <span className="font-semibold text-slate-600 capitalize">{dep.sender_name}</span>
+                  </div>
                 </div>
-                <span className="bg-orange-100 text-orange-700 px-2 py-1 rounded text-[10px] uppercase font-black tracking-wide">
-                  Awaiting Admin
-                </span>
+                <div className="flex flex-col items-end">
+                  <span className="bg-orange-100 text-orange-700 px-2 py-1 rounded text-[10px] uppercase font-black tracking-wide">
+                    Awaiting Admin
+                  </span>
+                  <span className="text-[9px] text-slate-400 mt-1">{dep.date}</span>
+                </div>
               </div>
             ))}
           </div>
@@ -151,16 +164,40 @@ const StashWallet = ({ walletBalance, setWalletBalance }) => {
               </div>
               <div className="flex justify-between border-b border-slate-200 pb-2">
                 <span className="text-xs text-slate-500 font-medium">Account Number</span>
-                <span className="text-xl font-black text-emerald-700 tracking-wider">{OPAY_ACCOUNT_NUMBER}</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xl font-black text-emerald-700 tracking-wider">{OPAY_ACCOUNT_NUMBER}</span>
+                  <button 
+                    onClick={() => {
+                      navigator.clipboard.writeText(OPAY_ACCOUNT_NUMBER);
+                      alert('Account Number Copied!');
+                    }}
+                    className="bg-slate-200 text-slate-600 px-2 py-1 rounded text-[10px] font-bold cursor-pointer"
+                  >
+                    COPY
+                  </button>
+                </div>
               </div>
               <div className="flex justify-between">
                 <span className="text-xs text-slate-500 font-medium">Account Name</span>
-                <span className="text-sm font-bold text-slate-800">{OPAY_ACCOUNT_NAME}</span>
+                <span className="text-xs font-bold text-slate-800 uppercase">{OPAY_ACCOUNT_NAME}</span>
               </div>
             </div>
 
-            <div className="bg-amber-50 text-amber-800 text-xs p-3 rounded-lg border border-amber-200 font-medium text-center">
-              ⚠️ Only click the button below <strong>AFTER</strong> you have completed the transfer on your bank app.
+            {/* 🌟 NEW: SENDER NAME INPUT BOX */}
+            <div className="bg-white border-2 border-amber-200 rounded-xl p-3">
+              <label className="text-[11px] font-bold text-amber-800 uppercase block mb-1">
+                What is the Account Name you sent the money from? *
+              </label>
+              <input
+                type="text"
+                placeholder="e.g., Samuel Doe"
+                value={senderName}
+                onChange={(e) => setSenderName(e.target.value)}
+                className="w-full p-2 border border-slate-300 rounded-lg focus:border-amber-500 outline-none text-xs font-bold bg-slate-50"
+              />
+              <p className="text-[9px] text-amber-700 font-medium mt-1">
+                We need this to match the transfer in our bank app so we can credit your wallet!
+              </p>
             </div>
 
             <div className="flex flex-col gap-2">
@@ -171,7 +208,10 @@ const StashWallet = ({ walletBalance, setWalletBalance }) => {
                 ✅ I Have Made the Transfer
               </button>
               <button
-                onClick={() => setShowTransferModal(false)}
+                onClick={() => {
+                  setShowTransferModal(false);
+                  setSenderName(''); // Clear it if they cancel
+                }}
                 className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-3 rounded-xl cursor-pointer"
               >
                 Cancel

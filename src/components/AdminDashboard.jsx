@@ -907,8 +907,9 @@ export default function AdminDashboard() {
                   <option value="paint_rubber">Paint Rubber</option>
                   <option value="mudu">Mudu / Module</option>
                   <option value="carton">Carton</option>
+                  <option value="crate">Crate</option>
                   <option value="pack">Pack</option>
-                  <option value="roll">Roll (Beverages / Sachets)</option>
+                  <option value="roll">Roll (Beverages)</option>
                   <option value="refill">Refill (Water / Gas)</option>
                   <option value="25_litres">25 Litres (Keg)</option>
                   <option value="12.5_litres">12.5 Litres</option>

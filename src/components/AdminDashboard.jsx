@@ -828,6 +828,12 @@ export default function AdminDashboard() {
                   <div>
                     <h4 className="font-bold text-slate-900 text-sm">{dep.full_name} <span className="text-xs text-slate-400">({dep.shopin_id})</span></h4>
                     <div className="text-lg font-black text-emerald-600 mt-1">₦{Number(dep.amount_ngn).toLocaleString()}</div>
+                    
+                    {/* 🌟 NEW: SHOWS THE SENDER'S ACCOUNT NAME ON THE ADMIN CARD */}
+                    <div className="text-xs font-semibold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-md inline-block mt-1 border border-amber-200">
+                      Transfer Name: <span className="uppercase font-black">{dep.sender_name || 'Not Provided'}</span>
+                    </div>
+
                     <div className="text-[10px] text-slate-400 mt-1">Claimed: {new Date(dep.created_at).toLocaleString()}</div>
                   </div>
                   <button onClick={() => handleApproveDeposit(dep.id, dep.full_name, dep.amount_ngn)} className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded-xl shadow-sm transition-all text-sm cursor-pointer whitespace-nowrap">

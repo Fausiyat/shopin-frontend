@@ -355,20 +355,23 @@ export default function CheckoutModal({
 
   const generateWhatsAppReceipt = () => {
     const orderId = orderData?.order_code || orderData?.id || 'N/A';
+    // 🌟 Lock in the exact final grandTotal calculated during checkout
+    const finalPaidAmount = grandTotal; 
+
     let msg = `*🛒 New ShopIn Order Receipt*\n\n`;
     msg += `*Order ID:* ${orderId}\n`;
-    msg += `*Total Paid:* ₦${grandTotal.toLocaleString()}\n`;
+    msg += `*Total Paid:* ₦${finalPaidAmount.toLocaleString()}\n`;
     
     const zoneName = selectedZone === 'custom_kwara' ? customZoneName : (selectedZone === 'alhikmah' ? 'Al-Hikmah / Apalara' : 'Tanke / Unilorin');
     msg += `*Delivery Zone:* ${zoneName}\n\n`;
     
     msg += `*Items:*\n`;
     items.forEach(item => {
-      msg += `- ${item.quantity}x ${item.name || item.item_name}\n`;
+      msg += `- ${item.quantity || 1}x ${item.name || item.item_name}\n`;
     });
     
     if (needsProcessing) {
-      msg += `- Food Processing Added (+₦${PROCESSING_FEE})\n`;
+      msg += `- Food Processing Add-on (+₦${PROCESSING_FEE})\n`;
     }
     
     msg += `\n_Paid securely via ShopIn Wallet._`;

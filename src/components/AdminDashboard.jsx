@@ -907,6 +907,7 @@ export default function AdminDashboard() {
                   <option value="paint_rubber">Paint Rubber</option>
                   <option value="mudu">Mudu / Module</option>
                   <option value="basket">Full Basket</option>
+                  <option value="bunch">Bunch</option>
                   <option value="10kg">10kg</option>
                   <option value="5kg">5kg</option>
                   <option value="2.5kg">2.5kg</option>

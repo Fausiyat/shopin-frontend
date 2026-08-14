@@ -452,8 +452,7 @@ export default function AIGroceryList({ onAddToCart, openCheckout }) {
                       setParsedResult({ ...parsedResult, items: updated });
                     }}
                     className="bg-slate-50 border border-slate-300 text-slate-700 text-xs rounded-md p-1 font-semibold focus:ring-1 focus:ring-emerald-500 outline-none cursor-pointer"
-                  >
-                    <optgroup label="Grains & Beans">
+                  ><optgroup label="Grains, Beans & Garri">
                       <option value="cup">Cup / Tin</option>
                       <option value="module">Module / Mudu / Congo</option>
                       <option value="paint_rubber">Paint Rubber</option>
@@ -462,28 +461,41 @@ export default function AIGroceryList({ onAddToCart, openCheckout }) {
                       <option value="half_bag">1/2 Bag (25kg)</option>
                       <option value="full_bag">1 Bag (50kg)</option>
                     </optgroup>
+
                     <optgroup label="Oils & Liquids">
-                      <option value="75cl">75cl</option>
+                      <option value="75cl">75cl Bottle</option>
                       <option value="5_litres">5 Litres</option>
                       <option value="12.5_litres">12.5 Litres</option>
-                      <option value="25_litres">25 Litres</option>
+                      <option value="25_litres">25 Litres (Keg)</option>
+                      <option value="refill">Refill (Water / Gas)</option>
                     </optgroup>
+
                     <optgroup label="Produce & Proteins">
+                      <option value="kg">1 Kilogram (1kg)</option>
+                      <option value="1/2kg">1/2 Kilogram (0.5kg)</option>
+                      <option value="2.5kg">2.5kg</option>
+                      <option value="5kg">5kg</option>
+                      <option value="10kg">10kg</option>
+                      <option value="tuber">Tuber (Yam / Potato)</option>
+                      <option value="bunch">Bunch (Plantain / Veggies)</option>
+                      <option value="pieces">Pieces (Wara / Ponmo / Meat)</option>
                       <option value="crate">Crate (Eggs)</option>
-                      <option value="basket">Basket</option>
+                      <option value="basket">Full Basket</option>
                       <option value="half_basket">Half Basket</option>
-                      <option value="naira_value">Custom ₦ Amount</option>
                     </optgroup>
-                    <optgroup label="Pasta & Other">
-                      <option value="carton">Carton (20 Units)</option>
+
+                    <optgroup label="Packaged, Meals & Others">
+                      <option value="carton">Carton</option>
                       <option value="pack">Pack</option>
-                      <option value="kg">Kg (Meat/Fish)</option>
-                      <option value="pieces">Pieces (Wara/Yam/SweetPotato)</option>
-                    </optgroup>
-                    <optgroup label="Miscellaneous">
+                      <option value="roll">Roll (Beverages)</option>
+                      <option value="dozen">One Dozen (12 pcs)</option>
+                      <option value="plate">Plate (Restaurants / Meals)</option>
                       <option value="sachet">Sachet</option>
-                      <option value="refilled">Refilled</option>
                       <option value="unit">Unit</option>
+                    </optgroup>
+
+                    <optgroup label="Value Based Pricing">
+                      <option value="naira_value">Custom ₦ Amount</option>
                     </optgroup>
                   </select>
 

@@ -128,10 +128,7 @@ function App() {
   };
 
   const getCartCount = () => {
-    return cartItems.reduce((acc, item) => {
-      const isNairaVal = (item.unit || '').toLowerCase() === 'naira_value';
-      return acc + (isNairaVal ? 1 : (Number(item.quantity) || 1));
-    }, 0);
+    return cartItems.length;
   };
 
   // 🌟 HELPER TO HANDLE BUBBLE CLICKS

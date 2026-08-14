@@ -1,16 +1,37 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 const StashWallet = ({ walletBalance, setWalletBalance }) => {
   const [depositAmount, setDepositAmount] = useState('');
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [pendingDeposits, setPendingDeposits] = useState([]); 
-  
-  // 🌟 NEW: State to hold the sender's account name
   const [senderName, setSenderName] = useState('');
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Your OPay Details
   const OPAY_ACCOUNT_NUMBER = "8143086509"; 
   const OPAY_ACCOUNT_NAME = "Mahmood Fausiyat Ayobami";
+
+  // 🌟 Automatically fetch the live wallet balance from the database on load
+  const fetchWalletBalance = async () => {
+    const currentShopinId = localStorage.getItem('SHOPIN_USER_ID') || 'SHP-ILR-1001';
+    setIsRefreshing(true);
+    try {
+      const API_URL = import.meta.env.VITE_API_URL || 'https://shopin-kwara-backend.onrender.com';
+      const res = await fetch(`${API_URL}/api/wallet/${currentShopinId}`);
+      const data = await res.json();
+      if (data && data.available_balance !== undefined) {
+        setWalletBalance(data.available_balance);
+      }
+    } catch (err) {
+      console.error("Failed to fetch wallet balance:", err);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchWalletBalance();
+  }, []);
 
   const handleInitiateDeposit = (e) => {
     e.preventDefault();
@@ -23,7 +44,6 @@ const StashWallet = ({ walletBalance, setWalletBalance }) => {
   };
 
   const handleConfirmSent = async () => {
-    // 🌟 Require the sender name before proceeding!
     if (!senderName.trim()) {
       alert("Please enter the Account Name you transferred the money from.");
       return;
@@ -39,7 +59,7 @@ const StashWallet = ({ walletBalance, setWalletBalance }) => {
         body: JSON.stringify({
           shopin_id: currentShopinId,
           amount_ngn: Number(depositAmount),
-          sender_name: senderName.trim() // 🌟 Sending the new data to the backend!
+          sender_name: senderName.trim()
         })
       });
 
@@ -55,7 +75,7 @@ const StashWallet = ({ walletBalance, setWalletBalance }) => {
       alert("Transfer claim submitted! Waiting for Admin verification.");
       setShowTransferModal(false);
       setDepositAmount('');
-      setSenderName(''); // Reset the input
+      setSenderName('');
       
     } catch (err) {
       alert("Error submitting claim. Please check your connection.");
@@ -66,8 +86,17 @@ const StashWallet = ({ walletBalance, setWalletBalance }) => {
   return (
     <div className="space-y-6">
       
-      {/* 1. Single Wallet Balance Card */}
-      <div className="bg-emerald-700 text-white p-6 rounded-2xl shadow-sm text-center">
+      {/* 1. Single Wallet Balance Card with Refresh Button */}
+      <div className="bg-emerald-700 text-white p-6 rounded-2xl shadow-sm text-center relative">
+        <button 
+          onClick={fetchWalletBalance} 
+          disabled={isRefreshing}
+          className="absolute top-4 right-4 bg-emerald-800 hover:bg-emerald-900 text-emerald-100 text-[10px] font-bold px-2.5 py-1 rounded-lg transition cursor-pointer shadow-xs"
+          title="Refresh Balance"
+        >
+          {isRefreshing ? 'Syncing...' : '🔄 Refresh'}
+        </button>
+
         <div className="text-emerald-100 text-xs font-bold uppercase tracking-wider mb-2 flex items-center justify-center gap-1">
           <span>💰</span> Stash Wallet Balance
         </div>
@@ -183,7 +212,6 @@ const StashWallet = ({ walletBalance, setWalletBalance }) => {
               </div>
             </div>
 
-            {/* 🌟 NEW: SENDER NAME INPUT BOX */}
             <div className="bg-white border-2 border-amber-200 rounded-xl p-3">
               <label className="text-[11px] font-bold text-amber-800 uppercase block mb-1">
                 What is the Account Name you sent the money from? *
@@ -195,9 +223,6 @@ const StashWallet = ({ walletBalance, setWalletBalance }) => {
                 onChange={(e) => setSenderName(e.target.value)}
                 className="w-full p-2 border border-slate-300 rounded-lg focus:border-amber-500 outline-none text-xs font-bold bg-slate-50"
               />
-              <p className="text-[9px] text-amber-700 font-medium mt-1">
-                We need this to match the transfer in our bank app so we can credit your wallet!
-              </p>
             </div>
 
             <div className="flex flex-col gap-2">
@@ -210,7 +235,7 @@ const StashWallet = ({ walletBalance, setWalletBalance }) => {
               <button
                 onClick={() => {
                   setShowTransferModal(false);
-                  setSenderName(''); // Clear it if they cancel
+                  setSenderName('');
                 }}
                 className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-3 rounded-xl cursor-pointer"
               >

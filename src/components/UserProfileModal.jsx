@@ -35,12 +35,12 @@ export default function UserProfileModal({ onClose, onProfileUpdated }) {
     };
 
     try {
-      // 1. Send update to backend API if available
       if (shopinApi && shopinApi.updateUserProfile) {
         await shopinApi.updateUserProfile(payload);
       }
 
-      // 2. Persist locally so the app remembers their info instantly
+      // 🌟 PERSIST SHOPIN_ID LOCALLY SO THE APP ALWAYS REMEMBERS WHO YOU ARE!
+      localStorage.setItem('SHOPIN_USER_ID', shopinId); // <--- ADD THIS LINE
       localStorage.setItem('SHOPIN_USER_NAME', fullName.trim());
       localStorage.setItem('SHOPIN_USER_EMAIL', userEmail.trim());
       localStorage.setItem('SHOPIN_USER_PHONE', userPhone.trim());
@@ -57,7 +57,9 @@ export default function UserProfileModal({ onClose, onProfileUpdated }) {
       }, 1200);
     } catch (err) {
       console.warn('Backend update fallback applied:', err);
-      // Fallback local save even if server call fails
+      
+      // 🌟 PERSIST SHOPIN_ID LOCALLY ON FALLBACK TOO
+      localStorage.setItem('SHOPIN_USER_ID', shopinId); // <--- ADD THIS LINE TOO
       localStorage.setItem('SHOPIN_USER_NAME', fullName.trim());
       localStorage.setItem('SHOPIN_USER_EMAIL', userEmail.trim());
       localStorage.setItem('SHOPIN_USER_PHONE', userPhone.trim());

@@ -213,6 +213,19 @@ export default function CheckoutModal({
     ? items.reduce((sum, item, idx) => sum + calculateItemCost(item, idx), 0) 
     : 0;
 
+  // 🌟 2. SMART BUFFER: Calculate 5% buffer ONLY for non-vendor items 
+  const nonVendorItemCost = Array.isArray(items) && items.length > 0 
+    ? items.reduce((sum, item, idx) => {
+        const isVendorItem = item.is_vendor || item.source === 'vendor' || item.category === 'Vendor';
+        if (isVendorItem) {
+          return sum; // Skip buffer calculation for strict vendor items!
+        }
+        return sum + calculateItemCost(item, idx);
+      }, 0) 
+    : 0;
+
+  const marketBuffer = Math.round(nonVendorItemCost * 0.05);
+
   // 🚀 DYNAMIC DELIVERY FEE CALCULATOR
   let baseDeliveryFee = 2000; 
   if (selectedZone === 'alhikmah') baseDeliveryFee = 1500; 
@@ -223,7 +236,9 @@ export default function CheckoutModal({
 
   const currentProcessingFee = needsProcessing ? PROCESSING_FEE : 0;
   const serviceFee = 500; 
-  const grandTotal = estimatedItemCost + currentDeliveryFee + serviceFee + currentProcessingFee;
+  
+  // Update Grand Total to include Market Buffer
+  const grandTotal = estimatedItemCost + marketBuffer + currentDeliveryFee + serviceFee + currentProcessingFee;
 
   const handlePriceChange = (idx, value) => {
     setCustomPrices((prev) => ({ ...prev, [idx]: value }));
@@ -312,7 +327,8 @@ export default function CheckoutModal({
         items: [...items],
         grandTotal: grandTotal,
         zoneName: selectedZone === 'custom_kwara' ? customZoneName : (selectedZone === 'alhikmah' ? 'Al-Hikmah / Apalara' : 'Tanke / Unilorin'),
-        needsProcessing: needsProcessing
+        needsProcessing: needsProcessing,
+        marketBuffer: marketBuffer
       });
 
       setOrderData(createdOrder);
@@ -326,7 +342,8 @@ export default function CheckoutModal({
         items: [...items],
         grandTotal: grandTotal,
         zoneName: selectedZone === 'custom_kwara' ? customZoneName : (selectedZone === 'alhikmah' ? 'Al-Hikmah / Apalara' : 'Tanke / Unilorin'),
-        needsProcessing: needsProcessing
+        needsProcessing: needsProcessing,
+        marketBuffer: marketBuffer
       });
 
       setOrderData(fallbackOrder);
@@ -345,7 +362,8 @@ export default function CheckoutModal({
       items, 
       grandTotal, 
       zoneName: selectedZone === 'custom_kwara' ? customZoneName : (selectedZone === 'alhikmah' ? 'Al-Hikmah / Apalara' : 'Tanke / Unilorin'), 
-      needsProcessing 
+      needsProcessing,
+      marketBuffer
     };
 
     let msg = `*🛒 New ShopIn Order Receipt*\n\n`;
@@ -364,6 +382,10 @@ export default function CheckoutModal({
     
     if (snap.needsProcessing) {
       msg += `- Food Processing Add-on (+₦${PROCESSING_FEE})\n`;
+    }
+    
+    if (snap.marketBuffer > 0) {
+      msg += `- Market Fluctuation Buffer (₦${snap.marketBuffer.toLocaleString()})\n`;
     }
     
     msg += `\n_Paid securely via ShopIn Wallet._`;
@@ -423,6 +445,9 @@ export default function CheckoutModal({
                     const title = cleanItemTitle(item.name || item.item_name);
                     const isNairaVal = (item.unit || '').toLowerCase() === 'naira_value';
                     const isErrand = item.category === 'Custom Errand';
+                    
+                    // 🌟 HIDE CUSTOM PRICE FOR VENDORS
+                    const isVendorItem = item.is_vendor || item.source === 'vendor' || item.category === 'Vendor';
 
                     return (
                       <div key={item.id || idx} className="bg-white p-3 rounded-xl border border-slate-200 space-y-1.5 shadow-2xs">
@@ -445,18 +470,21 @@ export default function CheckoutModal({
                           )}
                         </div>
 
-                        <div className="flex items-center gap-2 pt-1 border-t border-slate-100">
-                          <span className="text-[11px] text-slate-400 font-medium">
-                            {isErrand ? "Add Extra Purchase Cost (₦):" : "Custom Unit Cost (₦):"}
-                          </span>
-                          <input
-                            type="number"
-                            placeholder={isErrand ? "e.g. 5000" : "Override unit price"}
-                            value={customPrices[idx] ?? ''}
-                            onChange={(e) => handlePriceChange(idx, e.target.value)}
-                            className="w-32 p-1.5 border border-slate-200 rounded-lg text-xs outline-none focus:border-emerald-500 bg-slate-50 font-medium"
-                          />
-                        </div>
+                        {/* ONLY SHOW OVERRIDE FOR NON-VENDOR ITEMS */}
+                        {!isVendorItem && (
+                          <div className="flex items-center gap-2 pt-1 border-t border-slate-100">
+                            <span className="text-[11px] text-slate-400 font-medium">
+                              {isErrand ? "Add Extra Purchase Cost (₦):" : "Custom Unit Cost (₦):"}
+                            </span>
+                            <input
+                              type="number"
+                              placeholder={isErrand ? "e.g. 5000" : "Override unit price"}
+                              value={customPrices[idx] ?? ''}
+                              onChange={(e) => handlePriceChange(idx, e.target.value)}
+                              className="w-32 p-1.5 border border-slate-200 rounded-lg text-xs outline-none focus:border-emerald-500 bg-slate-50 font-medium"
+                            />
+                          </div>
+                        )}
                       </div>
                     );
                   })
@@ -625,11 +653,19 @@ export default function CheckoutModal({
               <span className="font-extrabold text-amber-800">+₦{PROCESSING_FEE}</span>
             </div>
 
+            {/* 🌟 NEW ITEMIZED FEE BREAKDOWN WITH BUFFER */}
             <div className="space-y-1.5 text-xs text-slate-600 border-t border-slate-100 pt-3">
               <div className="flex justify-between">
                 <span>Total Item Cost (Goods & Errands):</span>
                 <span className="font-semibold text-slate-800">₦{estimatedItemCost.toLocaleString()}</span>
               </div>
+              
+              {marketBuffer > 0 && (
+                <div className="flex justify-between text-blue-700">
+                  <span>Market Fluctuation Buffer (5%):</span>
+                  <span className="font-semibold">₦{marketBuffer.toLocaleString()} <span className="text-[9px] opacity-75">(Refundable)</span></span>
+                </div>
+              )}
               
               {needsProcessing && (
                 <div className="flex justify-between text-amber-700">

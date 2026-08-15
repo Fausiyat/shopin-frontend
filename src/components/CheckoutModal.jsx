@@ -663,7 +663,7 @@ export default function CheckoutModal({
           <div className="text-center py-6 space-y-3">
             <div className="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center text-2xl mx-auto font-black">✓</div>
             <h3 className="text-lg font-bold text-slate-900">Order Placed Successfully!</h3>
-            <p className="text-xs text-slate-500">Your payment of ₦{grandTotal.toLocaleString()} was successful.</p>
+            <p className="text-xs text-slate-500">Your payment of ₦{(receiptSnapshot?.grandTotal || grandTotal).toLocaleString()} was successful.</p>
             
             <div className="flex flex-col gap-2 mt-4 pt-2">
               <a 

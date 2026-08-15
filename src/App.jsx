@@ -46,7 +46,15 @@ function App() {
   
   useEffect(() => {
     const fetchBalances = async () => {
-      const shopinId = localStorage.getItem('SHOPIN_USER_ID') || 'SHP-ILR-1001';
+      // 🌟 REMOVED THE 'SHP-ILR-1001' FALLBACK
+      const shopinId = localStorage.getItem('SHOPIN_USER_ID'); 
+      
+      // 🌟 IF NO USER IS LOGGED IN, DO NOT FETCH THE TEST ACCOUNT!
+      if (!shopinId) {
+        setWalletBalance(0);
+        return; 
+      }
+
       try {
         const response = await shopinApi.getWalletBalance(shopinId);
         if (response.data) {

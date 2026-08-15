@@ -60,6 +60,9 @@ export default function CheckoutModal({
   const [orderData, setOrderData] = useState(null);
   const [errorMessage, setErrorMessage] = useState(null);
   
+  // 🌟 SNAPSHOT FIX: Locks in the cart details before clearing for WhatsApp
+  const [receiptSnapshot, setReceiptSnapshot] = useState(null);
+
   // 🎁 Gifting State
   const [isGifting, setIsGifting] = useState(false);
   const [recipientName, setRecipientName] = useState('');
@@ -85,10 +88,7 @@ export default function CheckoutModal({
               const nameKey = item.item_name.toLowerCase();
               const unitKey = (item.unit || '').toLowerCase();
               
-              // 1. Store EXACT match (e.g., 'beans_paint_rubber')
               priceMap[`${nameKey}_${unitKey}`] = parseFloat(item.max_price_ngn);
-              
-              // 2. Store general fallback (in case it needs to do fractional math)
               if (!priceMap[nameKey]) {
                 priceMap[nameKey] = parseFloat(item.max_price_ngn);
               }
@@ -117,7 +117,7 @@ export default function CheckoutModal({
     return rawTitle.trim();
   };
 
- const calculateItemCost = (item, idx) => {
+  const calculateItemCost = (item, idx) => {
     const isErrand = item.category === 'Custom Errand';
     const isNairaVal = (item.unit || '').toLowerCase() === 'naira_value';
 
@@ -126,31 +126,21 @@ export default function CheckoutModal({
       return (isErrand || isNairaVal) ? overrideVal : (item.quantity || 1) * overrideVal;
     }
 
-    if (isErrand || item.is_pickup_only) {
-      return 0;
-    }
+    if (isErrand || item.is_pickup_only) return 0;
+    if (isNairaVal) return parseFloat(item.quantity) || 0;
 
-    if (isNairaVal) {
-      return parseFloat(item.quantity) || 0;
-    }
-
-    // 🌟 COMPREHENSIVE KWARA MARKET PRICING ENGINE
     const itemNameKey = cleanItemTitle(item.name || item.item_name).toLowerCase();
     const unitKey = (item.unit || '').toLowerCase();
     
-    // 🚀 NEW: CHECK FOR EXACT MATCH FIRST
     const exactAdminPrice = livePrices[`${itemNameKey}_${unitKey}`];
     let calculatedUnitPrice = 0;
 
     if (exactAdminPrice) {
-      // BINGO! You logged this exact item and unit in the admin. Use it directly without extra math.
       calculatedUnitPrice = exactAdminPrice;
     } else {
-      // IF NO EXACT MATCH: Fallback to the smart fractional math engine
       const baseAdminPrice = livePrices[`${itemNameKey}_full_bag`] || livePrices[itemNameKey] || ESTIMATED_PRICES.full_bag;
       calculatedUnitPrice = baseAdminPrice;
 
-      // 1. KWARA GRAINS (Paint Rubber & Mudu)
       if (unitKey.includes('paint_rubber') || unitKey.includes('paint')) {
         const oneEighthBag = (baseAdminPrice * 0.125);
         calculatedUnitPrice = 1.5 * oneEighthBag; 
@@ -159,7 +149,6 @@ export default function CheckoutModal({
         const paintRubberPrice = 1.5 * (baseAdminPrice * 0.125);
         calculatedUnitPrice = paintRubberPrice / 3; 
       }
-      // 2. BAG FRACTIONS
       else if (unitKey.includes('half_bag') || unitKey.includes('1/2')) {
         calculatedUnitPrice = baseAdminPrice * 0.5; 
       }
@@ -169,7 +158,6 @@ export default function CheckoutModal({
       else if (unitKey.includes('1/8_bag') || unitKey.includes('1/8')) {
         calculatedUnitPrice = baseAdminPrice * 0.125; 
       }
-      // 3. MEAT & PROTEINS (1kg & 1/2kg)
       else if (unitKey.includes('1/2kg') || unitKey.includes('0.5kg')) {
         const oneKgPrice = livePrices[`${itemNameKey}_kg`] || livePrices[itemNameKey] || ESTIMATED_PRICES.kg;
         calculatedUnitPrice = oneKgPrice * 0.5;
@@ -177,7 +165,6 @@ export default function CheckoutModal({
       else if (unitKey.includes('kg')) {
         calculatedUnitPrice = livePrices[itemNameKey] || ESTIMATED_PRICES.kg;
       }
-      // 4. TUBERS, PIECES & BUNCHES
       else if (unitKey.includes('tuber')) {
         calculatedUnitPrice = livePrices[itemNameKey] || ESTIMATED_PRICES.tuber;
       }
@@ -187,7 +174,6 @@ export default function CheckoutModal({
       else if (unitKey.includes('bunch')) {
         calculatedUnitPrice = livePrices[itemNameKey] || ESTIMATED_PRICES.bunch || 1500;
       }
-      // 5. LIQUIDS & KEGS
       else if (unitKey.includes('25_litres') || unitKey.includes('25l')) {
         calculatedUnitPrice = livePrices[itemNameKey] || ESTIMATED_PRICES['25_litres'];
       }
@@ -202,22 +188,18 @@ export default function CheckoutModal({
       else if (unitKey.includes('75cl')) {
         calculatedUnitPrice = livePrices[itemNameKey] || ESTIMATED_PRICES['75cl'];
       }
-      // 6. CARTONS, PACKS, ROLLS & REFILLS
       else if (unitKey.includes('roll') || unitKey.includes('refill') || unitKey.includes('refilled')) {
         calculatedUnitPrice = livePrices[itemNameKey] || ESTIMATED_PRICES.roll || ESTIMATED_PRICES.refill;
       }
       else if (unitKey.includes('pack')) {
         const cartonPrice = livePrices[`${itemNameKey}_carton`] || livePrices[itemNameKey] || ESTIMATED_PRICES.carton;
         let packsPerCarton = 20; 
-        if (itemNameKey.includes('noodle') || itemNameKey.includes('indomie')) {
-          packsPerCarton = 40; 
-        }
+        if (itemNameKey.includes('noodle') || itemNameKey.includes('indomie')) packsPerCarton = 40; 
         calculatedUnitPrice = cartonPrice / packsPerCarton;
       }
       else if (unitKey.includes('carton')) {
         calculatedUnitPrice = livePrices[itemNameKey] || ESTIMATED_PRICES.carton;
       }
-      // 7. STANDARD FALLBACK
       else {
         const unitMultiplier = ESTIMATED_PRICES[unitKey] ? (ESTIMATED_PRICES[unitKey] / ESTIMATED_PRICES.full_bag) : 1;
         calculatedUnitPrice = baseAdminPrice * unitMultiplier;
@@ -225,35 +207,26 @@ export default function CheckoutModal({
     }
 
     return (item.quantity || 1) * calculatedUnitPrice;
-    };
+  };
     
   const estimatedItemCost = Array.isArray(items) && items.length > 0 
     ? items.reduce((sum, item, idx) => sum + calculateItemCost(item, idx), 0) 
     : 0;
 
   // 🚀 DYNAMIC DELIVERY FEE CALCULATOR
-  let baseDeliveryFee = 2000; // Default Outer Zone (Tanke, Challenge, Irewolede)
-  
-  if (selectedZone === 'alhikmah') {
-    baseDeliveryFee = 1500; // Inner Zone
-  } else if (selectedZone === 'custom_kwara') {
-    baseDeliveryFee = 3000; // 🔥 Areas outside the selected routes
-  }
+  let baseDeliveryFee = 2000; 
+  if (selectedZone === 'alhikmah') baseDeliveryFee = 1500; 
+  else if (selectedZone === 'custom_kwara') baseDeliveryFee = 3000; 
 
-  // Apply the ₦500 Shuttle Discount (Shuttles are disabled for custom_kwara)
   const isShuttleEligible = useShuttle && selectedZone !== 'custom_kwara';
   const currentDeliveryFee = isShuttleEligible ? (baseDeliveryFee - 500) : baseDeliveryFee;
 
-  // 🌟 UPGRADE: Calculate processing fee and add it to Grand Total
   const currentProcessingFee = needsProcessing ? PROCESSING_FEE : 0;
   const serviceFee = 500; 
   const grandTotal = estimatedItemCost + currentDeliveryFee + serviceFee + currentProcessingFee;
 
   const handlePriceChange = (idx, value) => {
-    setCustomPrices((prev) => ({
-      ...prev,
-      [idx]: value
-    }));
+    setCustomPrices((prev) => ({ ...prev, [idx]: value }));
   };
 
   const handleConfirmOrder = async () => {
@@ -265,11 +238,8 @@ export default function CheckoutModal({
     for (let idx = 0; idx < items.length; idx++) {
       const item = items[idx];
       const customVal = customPrices[idx];
-      
       if (customVal !== undefined && customVal !== '') {
         const userEnteredPrice = parseFloat(customVal) || 0;
-        
-        // Let's also check the live admin price for validation!
         const itemNameKey = cleanItemTitle(item.name || item.item_name).toLowerCase();
         const liveAdminPrice = livePrices[itemNameKey];
         const unitKey = (item.unit || '').toLowerCase();
@@ -298,15 +268,13 @@ export default function CheckoutModal({
       return;
     }
 
-    if (isGifting && (!recipientName.trim() || !recipientPhone.trim() || !recipientAddress.trim())) {
-      setErrorMessage("Please fill in the recipient's Name, Phone, and Address for gift delivery.");
-      return;
-    }
-
     setIsSubmitting(true);
     setErrorMessage(null);
 
     const payload = {
+      // 🌟 WALLET DEDUCTION FIX: Tell the backend whose wallet to charge!
+      shopin_id: localStorage.getItem('SHOPIN_USER_ID') || 'SHP-ILR-1001', 
+
       channel: 'WEB',
       raw_input_text: rawText || items.map(i => `${i.quantity || 1}x ${cleanItemTitle(i.name || i.item_name)}`).join(', '),
       parsed_json: { 
@@ -339,12 +307,28 @@ export default function CheckoutModal({
         order_code: data.order_code || `ORD-${Math.floor(10000 + Math.random() * 90000)}` 
       };
 
+      // 🌟 WHATSAPP FIX: Take a snapshot of the cart before it gets cleared
+      setReceiptSnapshot({
+        items: [...items],
+        grandTotal: grandTotal,
+        zoneName: selectedZone === 'custom_kwara' ? customZoneName : (selectedZone === 'alhikmah' ? 'Al-Hikmah / Apalara' : 'Tanke / Unilorin'),
+        needsProcessing: needsProcessing
+      });
+
       setOrderData(createdOrder);
       setIsConfirmed(true);
 
       if (onOrderSuccess) onOrderSuccess(createdOrder, grandTotal);
     } catch (err) {
       const fallbackOrder = { id: `ORD-${Math.floor(10000 + Math.random() * 90000)}`, order_code: `ORD-${Math.floor(10000 + Math.random() * 90000)}` };
+      
+      setReceiptSnapshot({
+        items: [...items],
+        grandTotal: grandTotal,
+        zoneName: selectedZone === 'custom_kwara' ? customZoneName : (selectedZone === 'alhikmah' ? 'Al-Hikmah / Apalara' : 'Tanke / Unilorin'),
+        needsProcessing: needsProcessing
+      });
+
       setOrderData(fallbackOrder);
       setIsConfirmed(true);
       if (onOrderSuccess) onOrderSuccess(fallbackOrder, grandTotal);
@@ -355,22 +339,30 @@ export default function CheckoutModal({
 
   const generateWhatsAppReceipt = () => {
     const orderId = orderData?.order_code || orderData?.id || 'N/A';
-    // 🌟 Lock in the exact final grandTotal calculated during checkout
-    const finalPaidAmount = grandTotal; 
+    
+    // 🌟 WHATSAPP FIX: Use the locked-in snapshot so items don't disappear!
+    const snap = receiptSnapshot || { 
+      items, 
+      grandTotal, 
+      zoneName: selectedZone === 'custom_kwara' ? customZoneName : (selectedZone === 'alhikmah' ? 'Al-Hikmah / Apalara' : 'Tanke / Unilorin'), 
+      needsProcessing 
+    };
 
     let msg = `*🛒 New ShopIn Order Receipt*\n\n`;
     msg += `*Order ID:* ${orderId}\n`;
-    msg += `*Total Paid:* ₦${finalPaidAmount.toLocaleString()}\n`;
-    
-    const zoneName = selectedZone === 'custom_kwara' ? customZoneName : (selectedZone === 'alhikmah' ? 'Al-Hikmah / Apalara' : 'Tanke / Unilorin');
-    msg += `*Delivery Zone:* ${zoneName}\n\n`;
+    msg += `*Total Paid:* ₦${snap.grandTotal.toLocaleString()}\n`;
+    msg += `*Delivery Zone:* ${snap.zoneName}\n\n`;
     
     msg += `*Items:*\n`;
-    items.forEach(item => {
-      msg += `- ${item.quantity || 1}x ${item.name || item.item_name}\n`;
-    });
+    if (snap.items && snap.items.length > 0) {
+      snap.items.forEach(item => {
+        msg += `- ${item.quantity || 1}x ${item.name || item.item_name}\n`;
+      });
+    } else {
+      msg += `- No items found\n`;
+    }
     
-    if (needsProcessing) {
+    if (snap.needsProcessing) {
       msg += `- Food Processing Add-on (+₦${PROCESSING_FEE})\n`;
     }
     
@@ -389,6 +381,7 @@ export default function CheckoutModal({
     setCustomAddressDetails('');
     setCustomZoneName('');
     setNeedsProcessing(false); 
+    setReceiptSnapshot(null); // Clear snapshot
     onClose();
   };
 
@@ -416,7 +409,6 @@ export default function CheckoutModal({
               <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block">
                 Requested Items ({items.length})
               </span>
-              {/* 🌟 NEW: BUY TO BUDGET DISCLAIMER */}
               <div className="bg-blue-100/70 border border-blue-200 text-blue-900 p-2.5 rounded-xl text-[10px] font-medium leading-relaxed shadow-xs flex items-start gap-2 mb-2">
                 <span className="text-sm">💡</span>
                 <p>
@@ -591,13 +583,6 @@ export default function CheckoutModal({
                     <div className="flex justify-between items-center text-[10px] px-1">
                       <span className="text-blue-700 italic">ShopIn Fee: ₦500 applied.</span>
                       <span className="text-blue-900 font-bold">Shuttle Fee: ₦{selectedZone === 'alhikmah' ? '1,000' : '1,500'}</span>
-                    </div>
-
-                    <div className="bg-blue-100/70 border border-blue-200 text-blue-900 p-3 rounded-xl text-[10px] font-medium leading-relaxed shadow-xs flex items-start gap-2.5">
-                      <span className="text-sm">⚠️</span>
-                      <p>
-                        <b>Shuttle Rules:</b> You can join a shuttle anytime, but deliveries are dispatched strictly between <b>2:00 PM - 6:00 PM</b>. To maintain these discounted rates, goods leave <b>ONLY when the shuttle reaches full capacity.</b>
-                      </p>
                     </div>
                   </div>
                 )}

@@ -74,7 +74,7 @@ export default function CheckoutModal({
   const PROCESSING_FEE = 500; 
   
   const [customPrices, setCustomPrices] = useState({});
-  const [livePrices, setLivePrices] = useState({}); // 🔥 Holds the live admin prices!
+  const [livePrices, setLivePrices] = useState({});
 
   // 🚀 Fetch Live Prices exactly when the cart opens!
   useEffect(() => {
@@ -218,18 +218,34 @@ export default function CheckoutModal({
     ? items.reduce((sum, item, idx) => {
         const isVendorItem = item.is_vendor || item.source === 'vendor' || item.category === 'Vendor';
         if (isVendorItem) {
-          return sum; // Skip buffer calculation for strict vendor items!
+          return sum; 
         }
         return sum + calculateItemCost(item, idx);
       }, 0) 
     : 0;
 
   const marketBuffer = Math.round(nonVendorItemCost * 0.05);
+  
+// 🌟 CHECK IF CART CONTAINS A RESTAURANT OR VENDOR ITEM
+  const hasRestaurantOrVendor = items.some(item => 
+    item.is_vendor || item.source === 'vendor' || item.category === 'Vendor' || item.category === 'Restaurants'
+  );
 
-  // 🚀 DYNAMIC DELIVERY FEE CALCULATOR
+  // 🚀 DYNAMIC DELIVERY FEE CALCULATOR WITH CROSS-AXIS PROTECTION
   let baseDeliveryFee = 2000; 
-  if (selectedZone === 'alhikmah') baseDeliveryFee = 1500; 
-  else if (selectedZone === 'custom_kwara') baseDeliveryFee = 3000; 
+  
+  if (selectedZone === 'alhikmah') {
+    baseDeliveryFee = 1500; 
+    
+    // Cross-Axis Protection: If they order a restaurant/vendor item to Al-Hikmah 
+    // WITHOUT choosing the batch shuttle, force the ₦3,000 Solo Express fee!
+    if (hasRestaurantOrVendor && !useShuttle) {
+      baseDeliveryFee = 3000; 
+    }
+  } 
+  else if (selectedZone === 'custom_kwara') {
+    baseDeliveryFee = 3000; 
+  }
 
   const isShuttleEligible = useShuttle && selectedZone !== 'custom_kwara';
   const currentDeliveryFee = isShuttleEligible ? (baseDeliveryFee - 500) : baseDeliveryFee;
@@ -287,8 +303,8 @@ export default function CheckoutModal({
     setErrorMessage(null);
 
     const payload = {
-      // 🌟 WALLET DEDUCTION FIX: Tell the backend whose wallet to charge!
-      shopin_id: localStorage.getItem('SHOPIN_USER_ID') || 'SHP-ILR-1001', 
+      // 🌟 REMOVED THE HARDCODED FALLBACK TEST ACCOUNT
+      shopin_id: localStorage.getItem('SHOPIN_USER_ID'), 
 
       channel: 'WEB',
       raw_input_text: rawText || items.map(i => `${i.quantity || 1}x ${cleanItemTitle(i.name || i.item_name)}`).join(', '),
@@ -336,19 +352,13 @@ export default function CheckoutModal({
 
       if (onOrderSuccess) onOrderSuccess(createdOrder, grandTotal);
     } catch (err) {
-      const fallbackOrder = { id: `ORD-${Math.floor(10000 + Math.random() * 90000)}`, order_code: `ORD-${Math.floor(10000 + Math.random() * 90000)}` };
+      // 🛑 STOP FAKING SUCCESS: Reveal the real error from the backend
+      console.error("Backend Order Error:", err.response?.data || err.message);
       
-      setReceiptSnapshot({
-        items: [...items],
-        grandTotal: grandTotal,
-        zoneName: selectedZone === 'custom_kwara' ? customZoneName : (selectedZone === 'alhikmah' ? 'Al-Hikmah / Apalara' : 'Tanke / Unilorin'),
-        needsProcessing: needsProcessing,
-        marketBuffer: marketBuffer
-      });
-
-      setOrderData(fallbackOrder);
-      setIsConfirmed(true);
-      if (onOrderSuccess) onOrderSuccess(fallbackOrder, grandTotal);
+      const serverError = err.response?.data?.error || err.response?.data?.message || "The server rejected this order. Please check the console.";
+      setErrorMessage(`❌ Order Failed: ${serverError}`);
+      
+      setIsConfirmed(false); // Keeps the modal open to show the actual error
     } finally {
       setIsSubmitting(false);
     }
@@ -403,7 +413,7 @@ export default function CheckoutModal({
     setCustomAddressDetails('');
     setCustomZoneName('');
     setNeedsProcessing(false); 
-    setReceiptSnapshot(null); // Clear snapshot
+    setReceiptSnapshot(null); 
     onClose();
   };
 

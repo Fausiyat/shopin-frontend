@@ -154,14 +154,22 @@ export const shopinApi = {
   saveUserAddress,
   getWalletBalance,
   getVendorProducts,
-  updateShopperPin: async (newPin, adminPin) => {
-  const response = await api.put('/admin/shopper-pin', 
-    { new_pin: newPin }, 
-    { headers: { 'x-admin-pin': adminPin } }
-  );
-  return response.data;
   
-},
+  // Update Shopper PIN (Admin)
+  updateShopperPin: async (newPin, adminPin) => {
+    const response = await api.put('/admin/shopper-pin', 
+      { new_pin: newPin }, 
+      { headers: { 'x-admin-pin': adminPin } }
+    );
+    return response.data;
+  },
+
+  // 🌟 FIX: Fetch active user orders for the tracker (Moved INSIDE the object!)
+  getUserOrders: async (shopinId) => {
+    return await api.get('/user/orders', {
+      params: { shopin_id: shopinId }
+    });
+  }
 };
 
 export default shopinApi;

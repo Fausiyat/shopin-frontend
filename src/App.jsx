@@ -19,7 +19,17 @@ function App() {
   // 🌟 NEW: This state remembers WHICH bubble you clicked so the marketplace can filter it!
   const [marketFilter, setMarketFilter] = useState('ALL');
 
-  const [cartItems, setCartItems] = useState([]);
+  // 🛒 1. Initialize cart from localStorage so it survives refreshes
+  const [cartItems, setCartItems] = useState(() => {
+    const savedCart = localStorage.getItem('SHOPIN_CART');
+    return savedCart ? JSON.parse(savedCart) : [];
+  });
+
+  // 🛒 2. Anytime the cart changes, save it securely to localStorage
+  useEffect(() => {
+    localStorage.setItem('SHOPIN_CART', JSON.stringify(cartItems));
+  }, [cartItems]);
+
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [activeOrderId, setActiveOrderId] = useState(null);
   const [activeOrderStatus, setActiveOrderStatus] = useState('PENDING_CONFIRMATION');
@@ -44,27 +54,49 @@ function App() {
 
   const [walletBalance, setWalletBalance] = useState(0);
   
+ // 🌟 UPGRADED: LIVE ORDER & WALLET POLLING
+  // This replaces the old fetchBalances and adds auto-updating every 10 seconds!
   useEffect(() => {
-    const fetchBalances = async () => {
-      // 🌟 REMOVED THE 'SHP-ILR-1001' FALLBACK
-      const shopinId = localStorage.getItem('SHOPIN_USER_ID'); 
-      
-      // 🌟 IF NO USER IS LOGGED IN, DO NOT FETCH THE TEST ACCOUNT!
-      if (!shopinId) {
-        setWalletBalance(0);
-        return; 
-      }
+    // 🌟 IF NO USER IS LOGGED IN, DO NOT FETCH!
+    const shopinId = localStorage.getItem('SHOPIN_USER_ID');
+    if (!shopinId) {
+      setWalletBalance(0);
+      return; 
+    }
 
+    const fetchLiveUpdates = async () => {
       try {
-        const response = await shopinApi.getWalletBalance(shopinId);
-        if (response.data) {
-          setWalletBalance(Number(response.data.available_balance) || 0);
+        // 1. Auto-fetch Order Status for the Tracker
+        const orderRes = await shopinApi.getUserOrders(shopinId);
+        const orders = orderRes.data?.orders || [];
+        const currentActive = orders.find(o => o.order_status !== 'COMPLETED');
+        
+        if (currentActive) {
+          setActiveOrderId(currentActive.id || currentActive.order_code);
+          setActiveOrderStatus(currentActive.order_status);
+        } else {
+          setActiveOrderId(null);
+          setActiveOrderStatus('PENDING_CONFIRMATION');
         }
+
+        // 2. Auto-fetch Wallet Balance (No more manual refreshing needed!)
+        const walletRes = await shopinApi.getWalletBalance(shopinId);
+        if (walletRes.data) {
+          setWalletBalance(Number(walletRes.data.available_balance) || 0);
+        }
+
       } catch (err) {
-        console.warn("Could not fetch wallet balances:", err.message);
+        console.warn("Live polling failed:", err.message);
       }
     };
-    fetchBalances();
+
+    // Run immediately on load (just like your old code did)
+    fetchLiveUpdates();
+
+    // The Magic: Check again silently every 10 seconds
+    const interval = setInterval(fetchLiveUpdates, 10000);
+    
+    return () => clearInterval(interval);
   }, []);
 
   const handleUnlockAdmin = async (e) => {

@@ -4,13 +4,13 @@ import shopinApi from '../services/api';
 
 // 🌟 NEW: Define all your Service categories in one place!
 const SERVICE_CATEGORIES = [
-  'AB&S Services', 
+  'AB&S Services',
+  'Muaz-O-Botanicals', 
   'Mini-Services', 
   'Artisans & Repairs', 
   'Beauty & Salons', 
   'Home Tutors', 
-  'Event Planning',
-  'Muaz-O-Botanicals'
+  'Event Planning'
 ];
 
 const getSampleProducts = () => [

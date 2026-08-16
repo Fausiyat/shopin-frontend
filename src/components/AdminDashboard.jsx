@@ -491,10 +491,12 @@ export default function AdminDashboard() {
 
   const fetchPendingOrders = async () => {
     try {
-      const res = await shopinApi.getAdminOrders ? await shopinApi.getAdminOrders() : { data: { orders: [] } };
+      const res = await axios.get(`${API_URL}/api/admin/orders`, {
+        headers: { 'x-admin-pin': adminPin }
+      });
       setPendingOrders(res.data?.orders || []);
     } catch (err) {
-      console.warn("Could not fetch orders.");
+      console.warn("Could not fetch orders:", err.message);
     }
   };
 

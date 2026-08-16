@@ -7,12 +7,11 @@ export default function OrderTracker({ orderStatus = 'PENDING_CONFIRMATION', act
   const [reviewSubmitted, setReviewSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // 1. We map out the exact order of the race
   const orderHierarchy = [
-    'PENDING_CONFIRMATION',  // Checkpoint 1: Order Placed
-    'SHOPPING',              // Checkpoint 2: Market Sourcing
-    'SHUTTLE_DISPATCH',      // Checkpoint 3: On Corridor Shuttle
-    'COMPLETED'              // Finish Line: Delivered
+    'PENDING_CONFIRMATION',
+    'SHOPPING',
+    'SHUTTLE_DISPATCH',
+    'COMPLETED'
   ];
 
   const steps = [
@@ -22,11 +21,8 @@ export default function OrderTracker({ orderStatus = 'PENDING_CONFIRMATION', act
     { key: 'COMPLETED', label: 'Delivered', icon: '📦' }
   ];
 
-  // 3. A smart helper to figure out exactly where the runner is!
   const getCurrentIndex = (status) => {
-    // 🌟 UPGRADE: If action is required, the shopper is stuck at the market!
     if (status === 'ACTION_REQUIRED') return 1; 
-    
     const index = orderHierarchy.indexOf(status);
     return index === -1 ? 0 : index;
   };
@@ -49,7 +45,6 @@ export default function OrderTracker({ orderStatus = 'PENDING_CONFIRMATION', act
 
           let circleStyle = "w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold z-10 transition-all ";
           
-          // 🌟 UPGRADE: If action is required, flash the current bubble Amber instead of Emerald!
           if (state === 'completed') {
             circleStyle += "bg-emerald-600 text-white shadow-md";
           } else if (state === 'current') {
@@ -73,14 +68,16 @@ export default function OrderTracker({ orderStatus = 'PENDING_CONFIRMATION', act
         })}
       </div>
 
-      {/* ⚠️ NEW: ACTION REQUIRED BLOCK FOR BALANCE UP */}
+      {/* ⚠️ ACTION REQUIRED BLOCK FOR BALANCE UP */}
       {orderStatus === 'ACTION_REQUIRED' && (
         <div className="mt-6 bg-amber-50 border-2 border-amber-300 rounded-2xl p-5 shadow-sm">
           <div className="flex items-center gap-3 mb-4">
             <span className="text-4xl animate-bounce">⚠️</span>
             <div>
-              <h4 className="font-extrabold text-amber-900 text-sm">Action Required: Market Price Spike</h4>
-              <p className="text-[11px] text-amber-800 font-medium leading-relaxed mt-0.5">Your custom budget was too low for current market rates. Please balance up so your shopper can proceed.</p>
+              <h4 className="font-extrabold text-amber-900 text-sm">Action Required: Balance Needed</h4>
+              <p className="text-[11px] text-amber-800 font-medium leading-relaxed mt-0.5">
+                Market prices adjusted or custom items were updated. The revised order total is <strong className="text-amber-950 font-black text-xs bg-amber-200 px-1.5 py-0.5 rounded">₦{Number(activeOrder?.total_estimated_cost || 0).toLocaleString()}</strong>. Please transfer the balance so your shopper can proceed.
+              </p>
             </div>
           </div>
 

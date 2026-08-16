@@ -15,17 +15,14 @@ import shopinApi from './services/api';
 function App() {
   const [activeTab, setActiveTab] = useState('home'); 
   const [searchTerm, setSearchTerm] = useState('');
-  
-  // 🌟 NEW: This state remembers WHICH bubble you clicked so the marketplace can filter it!
   const [marketFilter, setMarketFilter] = useState('ALL');
 
-  // 🛒 1. Initialize cart from localStorage so it survives refreshes
+  // 🛒 1. Persistent Cart from localStorage
   const [cartItems, setCartItems] = useState(() => {
     const savedCart = localStorage.getItem('SHOPIN_CART');
     return savedCart ? JSON.parse(savedCart) : [];
   });
 
-  // 🛒 2. Anytime the cart changes, save it securely to localStorage
   useEffect(() => {
     localStorage.setItem('SHOPIN_CART', JSON.stringify(cartItems));
   }, [cartItems]);
@@ -33,7 +30,9 @@ function App() {
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [activeOrderId, setActiveOrderId] = useState(null);
   const [activeOrderStatus, setActiveOrderStatus] = useState('PENDING_CONFIRMATION');
-  
+  const [activeOrder, setActiveOrder] = useState(null);
+  const [orderHistory, setOrderHistory] = useState([]);
+
   const [activeTargetGoal, setActiveTargetGoal] = useState(() => {
     const saved = localStorage.getItem('SHOPIN_ACTIVE_TARGET');
     return saved ? JSON.parse(saved) : null;
@@ -54,10 +53,8 @@ function App() {
 
   const [walletBalance, setWalletBalance] = useState(0);
   
- // 🌟 UPGRADED: LIVE ORDER & WALLET POLLING
-  // This replaces the old fetchBalances and adds auto-updating every 10 seconds!
+  // 🌟 LIVE ORDER & WALLET POLLING (Every 10 seconds)
   useEffect(() => {
-    // 🌟 IF NO USER IS LOGGED IN, DO NOT FETCH!
     const shopinId = localStorage.getItem('SHOPIN_USER_ID');
     if (!shopinId) {
       setWalletBalance(0);
@@ -66,20 +63,22 @@ function App() {
 
     const fetchLiveUpdates = async () => {
       try {
-        // 1. Auto-fetch Order Status for the Tracker
         const orderRes = await shopinApi.getUserOrders(shopinId);
         const orders = orderRes.data?.orders || [];
+        setOrderHistory(orders);
+
         const currentActive = orders.find(o => o.order_status !== 'COMPLETED');
         
         if (currentActive) {
           setActiveOrderId(currentActive.id || currentActive.order_code);
           setActiveOrderStatus(currentActive.order_status);
+          setActiveOrder(currentActive);
         } else {
           setActiveOrderId(null);
           setActiveOrderStatus('PENDING_CONFIRMATION');
+          setActiveOrder(null);
         }
 
-        // 2. Auto-fetch Wallet Balance (No more manual refreshing needed!)
         const walletRes = await shopinApi.getWalletBalance(shopinId);
         if (walletRes.data) {
           setWalletBalance(Number(walletRes.data.available_balance) || 0);
@@ -90,12 +89,8 @@ function App() {
       }
     };
 
-    // Run immediately on load (just like your old code did)
     fetchLiveUpdates();
-
-    // The Magic: Check again silently every 10 seconds
     const interval = setInterval(fetchLiveUpdates, 10000);
-    
     return () => clearInterval(interval);
   }, []);
 
@@ -160,6 +155,7 @@ function App() {
     if (createdOrder?.id || createdOrder?.order_code) {
       setActiveOrderId(createdOrder.id || createdOrder.order_code);
       setActiveOrderStatus(createdOrder.order_status || 'PENDING_CONFIRMATION'); 
+      setActiveOrder(createdOrder);
     }
     if (amountDeducted) {
       setWalletBalance((prev) => Math.max(0, prev - amountDeducted));
@@ -171,7 +167,6 @@ function App() {
     return cartItems.length;
   };
 
-  // 🌟 HELPER TO HANDLE BUBBLE CLICKS
   const openMarketplaceWithFilter = (filterType) => {
     setMarketFilter(filterType);
     setActiveTab('marketplace');
@@ -183,15 +178,15 @@ function App() {
 
       <nav className="bg-white border-b border-slate-200 sticky top-0 z-10 shadow-xs">
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <img
-                src="/logo.png"
-                alt="ShopIn Logo"
-                className="h-10 w-auto object-contain max-w-[160px] cursor-pointer"
-                onClick={() => setActiveTab('home')}
-              />
-              <div>
-                <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
+            <img
+              src="/logo.png"
+              alt="ShopIn Logo"
+              className="h-10 w-auto object-contain max-w-[160px] cursor-pointer"
+              onClick={() => setActiveTab('home')}
+            />
+            <div>
+              <div className="flex items-center gap-2">
                 <button onClick={() => { isAdminUnlocked ? setActiveTab('admin') : setShowAdminPasscodeModal(true); }} className="text-xs opacity-40 hover:opacity-100 transition cursor-pointer">
                   {isAdminUnlocked ? '🔓' : '🔒'}
                 </button>
@@ -236,13 +231,11 @@ function App() {
       </nav>
 
       <main className="max-w-6xl mx-auto px-4 py-8">
-        
         {activeTab === 'home' ? (
           <div className="w-full space-y-6">
             <section className="bg-emerald-800 text-white p-8 md:p-12 text-center rounded-3xl shadow-md">
               <h1 className="text-3xl md:text-4xl font-extrabold mb-6 tracking-tight">What do you need today?</h1>
               
-              {/* 🌟 UPGRADED LIVE SEARCH BAR */}
               <div className="max-w-2xl mx-auto bg-white rounded-full flex items-center overflow-hidden pl-4 pr-1.5 py-1.5 shadow-lg border-2 border-transparent focus-within:border-emerald-400 transition-all">
                 <span className="text-slate-400 text-xl mr-2">🔍</span>
                 <input 
@@ -264,7 +257,6 @@ function App() {
               </div>
             </section>
 
-            {/* 🛟 ADMIN SUPPORT & HELP BANNER */}
             <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs shadow-xs max-w-5xl mx-auto">
               <div className="flex items-center gap-3">
                 <span className="text-2xl">🛟</span>
@@ -274,26 +266,16 @@ function App() {
                 </div>
               </div>
               <div className="flex items-center gap-2 w-full sm:w-auto">
-                <a 
-                  href="tel:08143086509" 
-                  className="flex-1 sm:flex-initial bg-amber-600 hover:bg-amber-700 text-white font-bold px-4 py-2.5 rounded-xl text-center transition cursor-pointer shadow-xs whitespace-nowrap active:scale-95"
-                >
+                <a href="tel:08143086509" className="flex-1 sm:flex-initial bg-amber-600 hover:bg-amber-700 text-white font-bold px-4 py-2.5 rounded-xl text-center transition cursor-pointer shadow-xs whitespace-nowrap active:scale-95">
                   📞 Call Admin
                 </a>
-                <a 
-                  href="https://wa.me/2349040161152?text=Hello%20ShopIn%20Admin,%20I%20need%20help%20with%20an%20issue:" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="flex-1 sm:flex-initial bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2.5 rounded-xl text-center transition cursor-pointer shadow-xs whitespace-nowrap active:scale-95"
-                >
+                <a href="https://wa.me/2349040161152?text=Hello%20ShopIn%20Admin,%20I%20need%20help%20with%20an%20issue:" target="_blank" rel="noopener noreferrer" className="flex-1 sm:flex-initial bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2.5 rounded-xl text-center transition cursor-pointer shadow-xs whitespace-nowrap active:scale-95">
                   💬 WhatsApp Chat
                 </a>
               </div>
             </div>
 
-            {/* 🌟 MOBILE-OPTIMIZED GRID */}
             <section className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 max-w-5xl mx-auto">
-              
               <div onClick={() => openMarketplaceWithFilter('MARKETS')} className="bg-white p-4 sm:p-5 rounded-3xl shadow-sm hover:shadow-md transition-all flex flex-col items-center justify-center text-center cursor-pointer border border-slate-100 hover:border-emerald-200 active:scale-95">
                 <span className="text-4xl sm:text-5xl mb-2 sm:mb-3">🛒</span>
                 <span className="font-bold text-slate-800 text-xs sm:text-sm mb-1">Local Markets</span>
@@ -325,13 +307,10 @@ function App() {
                   Type your custom grocery list, pharmacy run, or special request and we'll handle it!
                 </span>
               </div>
-
             </section>
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-            
-            {/* 🌟 DYNAMIC MAIN SECTION: Full width for Wallet/Admin, 7-columns for others */}
             <section className={`bg-white rounded-2xl border border-slate-200 shadow-xs p-6 ${activeTab === 'wallet' || activeTab === 'admin' ? 'lg:col-span-12' : 'lg:col-span-7'}`}>
               
               {activeTab === 'wallet' && (
@@ -346,6 +325,7 @@ function App() {
                   <StashWallet 
                     walletBalance={walletBalance} 
                     setWalletBalance={setWalletBalance} 
+                    orderHistory={orderHistory}
                   />
                 </div>
               )}
@@ -389,12 +369,10 @@ function App() {
               )}
             </section>
 
-            {/* 🌟 CONDITIONALLY RENDER THE SIDEBAR */}
             {activeTab !== 'wallet' && activeTab !== 'admin' && (
               <aside className="lg:col-span-5 space-y-6">
-                
                 {activeOrderId ? (
-                  <OrderTracker orderStatus={activeOrderStatus} activeOrder={null} />
+                  <OrderTracker orderStatus={activeOrderStatus} activeOrder={activeOrder} />
                 ) : (
                   <div className="bg-slate-100 border border-slate-200 rounded-2xl p-4 text-center text-slate-400 text-xs font-medium">
                     🛒 No active order tracking. Place an order to view live delivery status!

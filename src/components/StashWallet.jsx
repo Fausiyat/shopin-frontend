@@ -1,17 +1,16 @@
 import React, { useState, useEffect } from 'react';
 
-const StashWallet = ({ walletBalance, setWalletBalance }) => {
+export default function StashWallet({ walletBalance, setWalletBalance, orderHistory = [] }) {
   const [depositAmount, setDepositAmount] = useState('');
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [pendingDeposits, setPendingDeposits] = useState([]); 
   const [senderName, setSenderName] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Your OPay Details
+  // OPay Details
   const OPAY_ACCOUNT_NUMBER = "8143086509"; 
   const OPAY_ACCOUNT_NAME = "Mahmood Fausiyat Ayobami";
 
-  // 🌟 Automatically fetch the live wallet balance from the database on load
   const fetchWalletBalance = async () => {
     const currentShopinId = localStorage.getItem('SHOPIN_USER_ID') || 'SHP-ILR-1001';
     setIsRefreshing(true);
@@ -86,7 +85,7 @@ const StashWallet = ({ walletBalance, setWalletBalance }) => {
   return (
     <div className="space-y-6">
       
-      {/* 1. Single Wallet Balance Card with Refresh Button */}
+      {/* 1. Wallet Balance Card */}
       <div className="bg-emerald-700 text-white p-6 rounded-2xl shadow-sm text-center relative">
         <button 
           onClick={fetchWalletBalance} 
@@ -246,8 +245,39 @@ const StashWallet = ({ walletBalance, setWalletBalance }) => {
           </div>
         </div>
       )}
+
+      {/* 5. Past Order History Block */}
+      <div className="mt-8 bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+        <h4 className="font-extrabold text-slate-900 text-sm mb-4">📜 Past Orders</h4>
+        
+        {orderHistory.filter(o => o.order_status === 'COMPLETED').length > 0 ? (
+          <div className="space-y-3 max-h-72 overflow-y-auto custom-scrollbar pr-2">
+            {orderHistory.filter(o => o.order_status === 'COMPLETED').map(order => (
+              <div key={order.id} className="p-3 bg-slate-50 border border-slate-100 rounded-xl flex justify-between items-center transition hover:bg-slate-100">
+                <div>
+                  <p className="text-xs font-bold text-slate-800">{order.order_code}</p>
+                  <p className="text-[10px] text-slate-500">
+                    {new Date(order.created_at).toLocaleDateString()}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs font-extrabold text-emerald-700">
+                    ₦{Number(order.total_estimated_cost).toLocaleString()}
+                  </p>
+                  <span className="text-[8px] bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full font-bold tracking-widest mt-1 inline-block">
+                    DELIVERED
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center p-4 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+            <p className="text-xs text-slate-500 font-medium">No completed orders yet.</p>
+          </div>
+        )}
+      </div>
+
     </div>
   );
-};
-
-export default StashWallet;
+}

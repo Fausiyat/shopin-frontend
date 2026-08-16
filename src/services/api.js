@@ -39,6 +39,7 @@ export const createOrder = saveDirectOrder; // Alias for component compatibility
 export const getQuote = (items, zoneName) => api.post('/orders/quote', { items, zone_name: zoneName });
 export const createMasterOrder = (orderData) => api.post('/orders/create', orderData);
 export const processVoiceNote = (voiceData) => api.post('/orders/voice-note', voiceData);
+export const getUserOrders = (shopinId) => api.get('/user/orders', { params: { shopin_id: shopinId } });
 
 // --- Wallet & Transactions ---
 export const depositWallet = (walletData, optionalAmount) => {
@@ -49,11 +50,19 @@ export const depositWallet = (walletData, optionalAmount) => {
 };
 export const verifyPaystack = (reference, shopin_id) => api.post('/wallet/verify-paystack', { reference, shopin_id });
 export const getWalletBalance = (shopinId) => api.get(`/wallet/${shopinId}`);
+
 // --- Market & Shopper ---
 export const getMarketTicker = () => api.get('/market/ticker');
 export const getShopperPickingList = () => api.get('/shoppers/picking-list');
 export const getPickingList = getShopperPickingList; // Alias for component compatibility
 export const addMarketPrice = (priceData) => api.post('/admin/prices', priceData);
+export const updateShopperPin = async (newPin, adminPin) => {
+  const response = await api.put('/admin/shopper-pin', 
+    { new_pin: newPin }, 
+    { headers: { 'x-admin-pin': adminPin } }
+  );
+  return response.data;
+};
 
 // --- Admin Security Verification ---
 export const verifyAdminPin = async (pin) => {
@@ -61,7 +70,6 @@ export const verifyAdminPin = async (pin) => {
     const response = await api.post('/admin/verify-pin', { pin });
     return response.data;
   } catch (error) {
-    // Fallback for local testing if backend route isn't deployed yet
     const savedPin = localStorage.getItem('SHOPIN_ADMIN_PIN') || '1234';
     if (pin.trim() === savedPin) {
       return { success: true };
@@ -92,7 +100,8 @@ export const joinShuttleBatch = (joinData, optionalShuttleId) => {
 };
 export const joinShuttle = joinShuttleBatch; // Alias for component compatibility
 
-// --- Marketplace & Escrow ---
+// --- Marketplace, Vendors & Escrow ---
+export const registerVendor = (vendorData) => api.post('/vendors/register', vendorData);
 export const addVendorProduct = (productData) => api.post('/vendors/products', productData);
 export const checkoutEscrow = (checkoutData) => api.post('/vendors/checkout', checkoutData);
 export const releaseEscrow = (escrowId) => api.post('/escrow/release', { escrow_id: escrowId });
@@ -123,12 +132,15 @@ export const shopinApi = {
   getQuote,
   createMasterOrder,
   processVoiceNote,
+  getUserOrders,
   depositWallet,
   verifyPaystack,
+  getWalletBalance,
   getMarketTicker,
   getShopperPickingList,
   getPickingList,
   addMarketPrice,
+  updateShopperPin,
   verifyAdminPin,
   getActivePools,
   getPools,
@@ -140,9 +152,12 @@ export const shopinApi = {
   createShuttleBatch,
   joinShuttleBatch,
   joinShuttle,
+  registerVendor,
   addVendorProduct,
   checkoutEscrow,
   releaseEscrow,
+  transferToTarget,
+  getVendorProducts,
   registerServiceProvider,
   bookMicroService,
   bookServiceContact,
@@ -151,25 +166,7 @@ export const shopinApi = {
   getAdminUsers,
   getUserStats,
   updateUserProfile,
-  saveUserAddress,
-  getWalletBalance,
-  getVendorProducts,
-  
-  // Update Shopper PIN (Admin)
-  updateShopperPin: async (newPin, adminPin) => {
-    const response = await api.put('/admin/shopper-pin', 
-      { new_pin: newPin }, 
-      { headers: { 'x-admin-pin': adminPin } }
-    );
-    return response.data;
-  },
-
-  // 🌟 FIX: Fetch active user orders for the tracker (Moved INSIDE the object!)
-  getUserOrders: async (shopinId) => {
-    return await api.get('/user/orders', {
-      params: { shopin_id: shopinId }
-    });
-  }
+  saveUserAddress
 };
 
 export default shopinApi;

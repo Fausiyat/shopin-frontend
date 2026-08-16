@@ -9,7 +9,8 @@ const SERVICE_CATEGORIES = [
   'Artisans & Repairs', 
   'Beauty & Salons', 
   'Home Tutors', 
-  'Event Planning'
+  'Event Planning',
+  'Muaz-O-Botanicals'
 ];
 
 const getSampleProducts = () => [

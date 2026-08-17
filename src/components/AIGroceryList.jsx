@@ -8,68 +8,70 @@ export default function AIGroceryList({ onAddToCart, openCheckout }) {
   const [error, setError] = useState(null);
   const [parsedResult, setParsedResult] = useState(null);
 
-  // 🌟 SMART PARSER: Extracts Custom Prices, Quantities, and Cleans the Item Name
+  // 🌟 BULLETPROOF PARSER: Forcefully hunts down prices and weights
   const sanitizeItemAndExtractQty = (rawName, originalQty, originalUnit) => {
-    if (!rawName) return { cleanName: '', qty: originalQty || 1, unit: originalUnit || 'unit', customPrice: '' };
-    let clean = rawName.trim();
-
-    let extractedQty = originalQty || 1;
-    let extractedUnit = originalUnit && originalUnit !== 'unit' ? originalUnit : 'unit';
+    let clean = String(rawName || '').trim();
+    let qty = Number(originalQty) || 1;
+    let unit = String(originalUnit || 'unit').toLowerCase();
     let customPrice = '';
 
-    // 1. Detect Naira Budgets (e.g. "500 Naira Tomatoes", "₦300 Ewedu")
-    const nairaRegex1 = /(?:₦|N|NGN)?\s*(\d+)\s*(?:naira|kobo|ngn)\s*(?:of|worth\s*of)?\s*(.*)/i;
-    const nairaRegex2 = /(?:₦|N)\s*(\d+)\s*(?:of|worth\s*of)?\s*(.*)/i;
+    // 1. If backend AI already caught the price (e.g. { quantity: 500, unit: "naira" })
+    if (['naira', 'naira_value', 'ngn'].includes(unit)) {
+      customPrice = qty;
+      qty = 1;
+      unit = 'naira_value';
+    }
 
-    let nMatch = clean.match(nairaRegex1);
-    if (nMatch) {
-      customPrice = parseInt(nMatch[1], 10);
-      clean = nMatch[2];
-      extractedQty = 1;
-    } else {
-      nMatch = clean.match(nairaRegex2);
-      if (nMatch) {
-        customPrice = parseInt(nMatch[1], 10);
-        clean = nMatch[2];
-        extractedQty = 1;
+    // 2. Bruteforce search for Naira budgets (e.g. "500 Naira" or "₦300")
+    const nairaRegex = /(\d+)\s*(naira|ngn|kobo)/i;
+    const symbolRegex = /(₦|n)\s*(\d+)/i;
+
+    if (nairaRegex.test(clean)) {
+      const match = clean.match(nairaRegex);
+      customPrice = parseInt(match[1], 10);
+      unit = 'naira_value';
+      qty = 1;
+      clean = clean.replace(match[0], ''); // Rip the price out of the title
+    } else if (symbolRegex.test(clean)) {
+      const match = clean.match(symbolRegex);
+      customPrice = parseInt(match[2], 10);
+      unit = 'naira_value';
+      qty = 1;
+      clean = clean.replace(match[0], ''); // Rip the price out of the title
+    }
+
+    // 3. Bruteforce search for Market Units (e.g. "1kg" or "2 paint rubbers")
+    if (unit === 'unit' || unit === '') {
+      const rules = [
+        { r: /(\d+(?:\.\d+)?)\s*(kg|kilograms?|kilos?)/i, u: 'kg' },
+        { r: /(1\/2|0\.5|half)\s*(kg|kilograms?|kilos?)/i, u: '1/2kg', q: 1 },
+        { r: /(\d+)\s*(paint\s*rubber|paint|rubber)s?/i, u: 'paint_rubber' },
+        { r: /(\d+)\s*(mudu|module|congo)s?/i, u: 'module' },
+        { r: /(\d+)\s*(tuber)s?/i, u: 'tuber' },
+        { r: /(\d+)\s*(crate)s?/i, u: 'crate' },
+        { r: /(\d+)\s*(basket)s?/i, u: 'basket' },
+        { r: /(\d+)\s*(carton)s?/i, u: 'carton' }
+      ];
+
+      for (let rule of rules) {
+        const match = clean.match(rule.r);
+        if (match) {
+          qty = rule.q !== undefined ? rule.q : parseFloat(match[1]);
+          unit = rule.u;
+          clean = clean.replace(match[0], ''); // Rip the unit out of the title
+          break;
+        }
       }
     }
 
-    // 2. Extract leading numbers for quantity (e.g. "2 Paint Garri")
-    const leadingNumberMatch = clean.match(/^(\d+)\s*(?:x|X)?\s*(.*)/i);
-    if (leadingNumberMatch) {
-      extractedQty = parseInt(leadingNumberMatch[1], 10);
-      clean = leadingNumberMatch[2];
-    }
-
-    // 3. Remove measurement words and modifiers from the title
-    const unitWords = [
-      'paint rubber', 'paint', 'rubber', 'tuber', 'tubers', 'mudu', 'module', 'congo',
-      'cup', 'tin', 'tins', 'bag', 'bags', 'kg', 'unit', 'units', 'pieces', 'piece',
-      'crate', 'crates', 'keg', 'kegs', 'litres', 'liter', 'liters', 'l', 'cl',
-      'pack', 'packs', 'carton', 'cartons', 'basket', 'sachet', 'sachets', 'refilled'
-    ];
+    // 4. Strip noise words and extra spaces
+    clean = clean.replace(/\b(of|worth|buy|get)\b/gi, '').trim();
+    clean = clean.replace(/^x\s*|\s*x$/gi, '').trim(); // Remove dangling "x"
+    clean = clean.replace(/\s+/g, ' '); // Collapse double spaces
     
-    unitWords.forEach(word => {
-      const regex = new RegExp(`\\b${word}\\b`, 'gi');
-      clean = clean.replace(regex, '');
-    });
+    clean = clean ? clean.charAt(0).toUpperCase() + clean.slice(1) : 'Grocery Item';
 
-    // 4. Cleanup extra spaces and leading "of"
-    clean = clean
-      .replace(/\(\s*\d*\s*\)/g, '')
-      .replace(/^\s*of\s+/i, '')
-      .replace(/\s+/g, ' ')
-      .trim();
-
-    clean = clean ? (clean.charAt(0).toUpperCase() + clean.slice(1)) : rawName;
-
-    return {
-      cleanName: clean,
-      qty: extractedQty,
-      unit: extractedUnit,
-      customPrice: customPrice || ''
-    };
+    return { cleanName: clean, qty: Math.max(1, qty), unit, customPrice };
   };
 
   // Presets
@@ -111,10 +113,10 @@ export default function AIGroceryList({ onAddToCart, openCheckout }) {
           id: item.id || `item_${Date.now()}_${idx}`,
           item_name: cleanName,
           brand_or_variant: item.brand_or_variant || item.brand || '',
-          quantity: Math.max(1, qty),
+          quantity: qty,
           unit: unit,
           custom_price: item.custom_price || customPrice || '',
-          category: item.category || (mode === 'errand' ? 'Custom Errand' : 'General Foodstuff')
+          category: item.category || (mode === 'errand' ? 'Custom Errand' : (unit === 'naira_value' ? 'Produce' : 'General Foodstuff'))
         };
       });
 
@@ -190,7 +192,7 @@ export default function AIGroceryList({ onAddToCart, openCheckout }) {
         brand_or_variant: item.brand_or_variant || item.brand || '',
         quantity: Math.max(1, Number(item.quantity) || 1),
         unit: item.unit || 'unit',
-        // 💰 Automatically inject custom price overrides into the cart!
+        // 💰 Automatically pass the extracted custom budget straight to Checkout!
         price: item.custom_price ? Number(item.custom_price) : undefined,
         custom_price: item.custom_price ? Number(item.custom_price) : undefined,
         is_service_request: parsedResult.is_service_request || false
@@ -311,27 +313,13 @@ export default function AIGroceryList({ onAddToCart, openCheckout }) {
                 <span>💡</span> Standard Ilorin Measurement Guide:
               </p>
               <div className="flex flex-wrap gap-1.5 text-[11px]">
-                <span className="bg-white px-2 py-0.5 rounded-md border border-emerald-200 text-emerald-900 font-medium">
-                  🥛 <b>Milk Tin</b> (1 Cup)
-                </span>
-                <span className="bg-white px-2 py-0.5 rounded-md border border-emerald-200 text-emerald-900 font-medium">
-                  🥣 <b>Mudu / Module</b> (8 Tins)
-                </span>
-                <span className="bg-white px-2 py-0.5 rounded-md border border-emerald-200 text-emerald-900 font-medium">
-                  🪣 <b>Paint Rubber</b> (3 Mudus + 2 Tins)
-                </span>
-                <span className="bg-white px-2 py-0.5 rounded-md border border-emerald-200 text-emerald-900 font-medium">
-                  🥔 <b>Tuber</b> (Single Yam)
-                </span>
-                <span className="bg-white px-2 py-0.5 rounded-md border border-emerald-200 text-emerald-900 font-medium">
-                  🥚 <b>Crate</b> (Eggs)
-                </span>
-                <span className="bg-white px-2 py-0.5 rounded-md border border-emerald-200 text-emerald-900 font-medium">
-                  🛢️ <b>1 Keg</b> (25 Litres)
-                </span>
-                <span className="bg-white px-2 py-0.5 rounded-md border border-emerald-200 text-emerald-900 font-medium">
-                  📦 <b>1/4 Bag</b> (3 Paint Rubbers)
-                </span>
+                <span className="bg-white px-2 py-0.5 rounded-md border border-emerald-200 text-emerald-900 font-medium">🥛 <b>Milk Tin</b> (1 Cup)</span>
+                <span className="bg-white px-2 py-0.5 rounded-md border border-emerald-200 text-emerald-900 font-medium">🥣 <b>Mudu / Module</b> (8 Tins)</span>
+                <span className="bg-white px-2 py-0.5 rounded-md border border-emerald-200 text-emerald-900 font-medium">🪣 <b>Paint Rubber</b> (3 Mudus)</span>
+                <span className="bg-white px-2 py-0.5 rounded-md border border-emerald-200 text-emerald-900 font-medium">🥔 <b>Tuber</b> (Yam)</span>
+                <span className="bg-white px-2 py-0.5 rounded-md border border-emerald-200 text-emerald-900 font-medium">🥚 <b>Crate</b> (Eggs)</span>
+                <span className="bg-white px-2 py-0.5 rounded-md border border-emerald-200 text-emerald-900 font-medium">🛢️ <b>1 Keg</b> (25 Litres)</span>
+                <span className="bg-white px-2 py-0.5 rounded-md border border-emerald-200 text-emerald-900 font-medium">📦 <b>1/4 Bag</b> (3 Paints)</span>
               </div>
             </div>
           )}
@@ -341,7 +329,7 @@ export default function AIGroceryList({ onAddToCart, openCheckout }) {
             <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-900 flex items-center justify-between">
               <div>
                 <p className="font-bold">Dispatch Errand Service Applied</p>
-                <p className="text-blue-700 mt-0.5">Standard ₦500 service fee + delivery fee (₦1,500 - ₦3,000 depending on your selected route corridor) will be calculated at checkout.</p>
+                <p className="text-blue-700 mt-0.5">Standard ₦500 service fee + delivery fee (₦1,500 - ₦3,000 depending on route) calculated at checkout.</p>
               </div>
               <span className="text-xl">🛵</span>
             </div>
@@ -382,7 +370,7 @@ export default function AIGroceryList({ onAddToCart, openCheckout }) {
                       />
                     </div>
 
-                    {/* 💰 OVERRIDE PRICE INPUT (Visible right in the AI row!) */}
+                    {/* 💰 OVERRIDE PRICE INPUT */}
                     <div className="flex items-center gap-1.5 text-xs text-slate-500 w-full sm:w-28 shrink-0">
                       <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-wide">Price(₦):</span>
                       <input

@@ -10,7 +10,7 @@ import VendorMarketplace from './components/VendorMarketplace';
 import AdminDashboard from './components/AdminDashboard';
 import OrderTracker from './components/OrderTracker';
 import UserProfileModal from './components/UserProfileModal'; 
-import shopinApi from './services/api'; 
+import shopinApi, { getOrCreateShopinId } from './services/api';
 
 function App() {
   const [activeTab, setActiveTab] = useState('home'); 

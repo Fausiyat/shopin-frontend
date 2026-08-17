@@ -62,7 +62,7 @@ function App() {
     }
 
     const fetchLiveUpdates = async () => {
-      const shopinId = getOrCreateShopinId();
+      const shopinId = shopinApi.getOrCreateShopinId();
       try {
         const orderRes = await shopinApi.getUserOrders(shopinId);
         const orders = orderRes.data?.orders 

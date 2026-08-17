@@ -8,63 +8,65 @@ export default function AIGroceryList({ onAddToCart, openCheckout }) {
   const [error, setError] = useState(null);
   const [parsedResult, setParsedResult] = useState(null);
 
-  // 🌟 PERECT PARSER: Matches CheckoutModal's exact expectations
+  // 🌟 RESTORED PARSER: Correctly maps Naira budgets to the 'quantity' field!
   const sanitizeItemAndExtractQty = (rawName, originalQty, originalUnit) => {
-    let clean = String(rawName || '').trim();
-    let qty = Number(originalQty) || 1;
-    let unit = String(originalUnit || 'unit').toLowerCase();
+    if (!rawName) return { cleanName: '', qty: originalQty || 1, unit: originalUnit || 'unit' };
+    
+    let clean = String(rawName).trim();
+    let extractedQty = Number(originalQty) || 1;
+    let extractedUnit = originalUnit && originalUnit !== 'unit' ? originalUnit : 'unit';
 
-    // 1. If backend AI already caught the price
-    if (['naira', 'naira_value', 'ngn'].includes(unit)) {
-      unit = 'naira_value';
+    // 1. Detect Naira Budgets (e.g., "500 Naira Tomatoes")
+    const nairaMatch = clean.match(/(?:₦|N|NGN)?\s*(\d+)\s*(?:naira|kobo|ngn)\s*(?:of|worth\s*of)?\s*(.*)/i) 
+                    || clean.match(/(?:₦|N)\s*(\d+)\s*(?:of|worth\s*of)?\s*(.*)/i);
+    
+    if (nairaMatch || ['naira', 'naira_value', 'ngn'].includes(extractedUnit.toLowerCase())) {
+      // 🚨 CRITICAL FIX: Map the Naira amount directly to QUANTITY!
+      extractedQty = nairaMatch ? parseInt(nairaMatch[1], 10) : extractedQty;
+      extractedUnit = 'naira_value';
+      clean = nairaMatch ? nairaMatch[2] : clean;
     } else {
-      // 2. Bruteforce search for Naira budgets (e.g. "500 Naira")
-      const nairaRegex = /(\d+)\s*(naira|ngn|kobo)/i;
-      const symbolRegex = /(₦|n)\s*(\d+)/i;
-
-      if (nairaRegex.test(clean)) {
-        const match = clean.match(nairaRegex);
-        qty = parseInt(match[1], 10);
-        unit = 'naira_value';
-        clean = clean.replace(match[0], ''); 
-      } else if (symbolRegex.test(clean)) {
-        const match = clean.match(symbolRegex);
-        qty = parseInt(match[2], 10);
-        unit = 'naira_value';
-        clean = clean.replace(match[0], ''); 
-      }
-      // 3. Bruteforce search for Market Units
-      else if (unit === 'unit' || unit === '') {
+      // 2. Fallback Unit Extraction (if backend AI missed it)
+      if (extractedUnit === 'unit') {
         const rules = [
-          { r: /(\d+(?:\.\d+)?)\s*(kg|kilograms?|kilos?)/i, u: 'kg' },
-          { r: /(1\/2|0\.5|half)\s*(kg|kilograms?|kilos?)/i, u: '1/2kg', q: 1 },
-          { r: /(\d+)\s*(paint\s*rubber|paint|rubber)s?/i, u: 'paint_rubber' },
-          { r: /(\d+)\s*(mudu|module|congo)s?/i, u: 'module' },
-          { r: /(\d+)\s*(tuber)s?/i, u: 'tuber' },
-          { r: /(\d+)\s*(crate)s?/i, u: 'crate' },
-          { r: /(\d+)\s*(basket)s?/i, u: 'basket' },
-          { r: /(\d+)\s*(carton)s?/i, u: 'carton' }
+          { r: /^(\d+(?:\.\d+)?)\s*(kg|kilograms?|kilos?)\s*(?:of)?\s*(.*)/i, u: 'kg' },
+          { r: /^(1\/2|0\.5|half)\s*(kg|kilograms?|kilos?)\s*(?:of)?\s*(.*)/i, u: '1/2kg', q: 1 },
+          { r: /^(\d+)\s*(paint\s*rubber|paint|rubber)s?\s*(?:of)?\s*(.*)/i, u: 'paint_rubber' },
+          { r: /^(\d+)\s*(mudu|module|congo)s?\s*(?:of)?\s*(.*)/i, u: 'module' },
+          { r: /^(\d+)\s*(tuber)s?\s*(?:of)?\s*(.*)/i, u: 'tuber' },
+          { r: /^(\d+)\s*(crate)s?\s*(?:of)?\s*(.*)/i, u: 'crate' },
+          { r: /^(\d+)\s*(basket)s?\s*(?:of)?\s*(.*)/i, u: 'basket' },
+          { r: /^(\d+)\s*(carton)s?\s*(?:of)?\s*(.*)/i, u: 'carton' }
         ];
-
         for (let rule of rules) {
           const match = clean.match(rule.r);
           if (match) {
-            qty = rule.q !== undefined ? rule.q : parseFloat(match[1]);
-            unit = rule.u;
-            clean = clean.replace(match[0], ''); 
+            extractedQty = rule.q !== undefined ? rule.q : parseFloat(match[1]);
+            extractedUnit = rule.u;
+            clean = match[3];
             break;
           }
         }
       }
+
+      // 3. Catch generic leading multipliers (e.g. "2x Tomatoes")
+      const leadingNumberMatch = clean.match(/^(\d+)\s*(?:x|X)?\s*(.*)/i);
+      if (leadingNumberMatch && extractedUnit === 'unit') {
+        extractedQty = parseInt(leadingNumberMatch[1], 10);
+        clean = leadingNumberMatch[2];
+      }
     }
 
-    // 4. Strip noise words and extra spaces
-    clean = clean.replace(/\b(of|worth|buy|get)\b/gi, '').trim();
-    clean = clean.replace(/^x\s*|\s*x$/gi, '').trim(); 
-    clean = clean.replace(/\s+/g, ' '); 
+    // 4. Strip leftover noise words
+    const noiseWords = ['of', 'worth', 'buy', 'get', 'paint rubber', 'paint', 'mudu', 'module', 'kg', 'kilogram', 'crate', 'tuber'];
+    noiseWords.forEach(w => {
+      clean = clean.replace(new RegExp(`\\b${w}\\b`, 'gi'), '');
+    });
+
+    clean = clean.replace(/\(\s*\d*\s*\)/g, '').replace(/\s+/g, ' ').trim();
     clean = clean ? clean.charAt(0).toUpperCase() + clean.slice(1) : 'Grocery Item';
 
-    return { cleanName: clean, qty: Math.max(1, qty), unit };
+    return { cleanName: clean, qty: extractedQty, unit: extractedUnit };
   };
 
   const groceryPresets = [
@@ -188,6 +190,7 @@ export default function AIGroceryList({ onAddToCart, openCheckout }) {
 
   return (
     <div className="space-y-5">
+      {/* Mode Selector Toggle */}
       <div className="flex bg-slate-100 p-1 rounded-xl text-xs font-semibold">
         <button
           onClick={() => { setMode('grocery'); setInputText(''); setParsedResult(null); }}
@@ -207,6 +210,7 @@ export default function AIGroceryList({ onAddToCart, openCheckout }) {
         </button>
       </div>
 
+      {/* Quick Presets */}
       <div>
         <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-2">
           {mode === 'grocery' ? 'Try Grocery Examples' : 'Try Custom Errand Examples'}
@@ -226,6 +230,7 @@ export default function AIGroceryList({ onAddToCart, openCheckout }) {
         </div>
       </div>
 
+      {/* Text Area */}
       <div>
         <textarea
           rows="4"
@@ -242,6 +247,7 @@ export default function AIGroceryList({ onAddToCart, openCheckout }) {
         />
       </div>
 
+      {/* Error Message */}
       {error && (
         <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl flex items-center justify-between">
           <span>⚠️ {error}</span>
@@ -251,6 +257,7 @@ export default function AIGroceryList({ onAddToCart, openCheckout }) {
         </div>
       )}
 
+      {/* Action Button */}
       <button
         onClick={handleParse}
         disabled={loading || !inputText.trim()}
@@ -265,6 +272,7 @@ export default function AIGroceryList({ onAddToCart, openCheckout }) {
         )}
       </button>
 
+      {/* Parsed Output Display */}
       {parsedResult && (
         <div className="mt-6 bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-4">
           <div className="flex items-center justify-between border-b border-slate-200 pb-2">
@@ -283,6 +291,7 @@ export default function AIGroceryList({ onAddToCart, openCheckout }) {
             </div>
           </div>
 
+          {/* VISUAL MEASUREMENT REFERENCE GUIDE RIBBON */}
           {mode === 'grocery' && (
             <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3">
               <p className="text-xs font-bold text-emerald-800 mb-1.5 flex items-center gap-1">
@@ -295,16 +304,16 @@ export default function AIGroceryList({ onAddToCart, openCheckout }) {
                 <span className="bg-white px-2 py-0.5 rounded-md border border-emerald-200 text-emerald-900 font-medium">🥔 <b>Tuber</b> (Yam)</span>
                 <span className="bg-white px-2 py-0.5 rounded-md border border-emerald-200 text-emerald-900 font-medium">🥚 <b>Crate</b> (Eggs)</span>
                 <span className="bg-white px-2 py-0.5 rounded-md border border-emerald-200 text-emerald-900 font-medium">🛢️ <b>1 Keg</b> (25 Litres)</span>
-                <span className="bg-white px-2 py-0.5 rounded-md border border-emerald-200 text-emerald-900 font-medium">📦 <b>1/4 Bag</b> (3 Paints)</span>
               </div>
             </div>
           )}
 
+          {/* Special Errand Notification Banner */}
           {parsedResult.is_service_request && (
             <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-900 flex items-center justify-between">
               <div>
                 <p className="font-bold">Dispatch Errand Service Applied</p>
-                <p className="text-blue-700 mt-0.5">Standard ₦500 service fee + delivery fee (₦1,500 - ₦3,000 depending on route) calculated at checkout.</p>
+                <p className="text-blue-700 mt-0.5">Standard ₦500 service fee + delivery fee calculated at checkout.</p>
               </div>
               <span className="text-xl">🛵</span>
             </div>
@@ -323,32 +332,28 @@ export default function AIGroceryList({ onAddToCart, openCheckout }) {
                       updated[index].item_name = e.target.value;
                       setParsedResult({ ...parsedResult, items: updated });
                     }}
-                    placeholder="Item Name (e.g. Tomatoes)"
+                    placeholder="Item Name"
                     className="font-bold text-slate-800 capitalize border-b border-transparent hover:border-slate-300 focus:border-emerald-500 outline-none w-full text-xs sm:text-sm"
                   />
                   
-                  {item.unit === 'naira_value' && (
+                  {item.unit === 'naira_value' ? (
                     <span className="text-[11px] font-extrabold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md inline-block mt-1">
                       Custom Budget: ₦{Number(item.quantity || 0).toLocaleString()}
                     </span>
-                  )}
-                  
-                  {item.unit !== 'naira_value' && (
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full">
-                      <div className="flex items-center gap-1.5 text-xs text-slate-500 flex-1">
-                        <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-wide">Brand:</span>
-                        <input
-                          type="text"
-                          value={item.brand_or_variant || ''}
-                          onChange={(e) => {
-                            const updated = [...parsedResult.items];
-                            updated[index].brand_or_variant = e.target.value;
-                            setParsedResult({ ...parsedResult, items: updated });
-                          }}
-                          placeholder="e.g. Dangote"
-                          className="text-xs bg-slate-50 border border-slate-200 rounded px-2 py-0.5 w-full focus:bg-white focus:border-emerald-500 outline-none font-medium"
-                        />
-                      </div>
+                  ) : (
+                    <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                      <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-wide">Brand:</span>
+                      <input
+                        type="text"
+                        value={item.brand_or_variant || ''}
+                        onChange={(e) => {
+                          const updated = [...parsedResult.items];
+                          updated[index].brand_or_variant = e.target.value;
+                          setParsedResult({ ...parsedResult, items: updated });
+                        }}
+                        placeholder="e.g. Dangote"
+                        className="text-xs bg-slate-50 border border-slate-200 rounded px-2 py-0.5 w-full focus:bg-white focus:border-emerald-500 outline-none font-medium"
+                      />
                     </div>
                   )}
                 </div>
@@ -366,9 +371,7 @@ export default function AIGroceryList({ onAddToCart, openCheckout }) {
                         }
                       }}
                       className="px-2 py-1 text-slate-600 hover:bg-slate-200 font-bold cursor-pointer"
-                    >
-                      -
-                    </button>
+                    >-</button>
                     
                     <input
                       type="number"
@@ -391,9 +394,7 @@ export default function AIGroceryList({ onAddToCart, openCheckout }) {
                         setParsedResult({ ...parsedResult, items: updated });
                       }}
                       className="px-2 py-1 text-slate-600 hover:bg-slate-200 font-bold cursor-pointer"
-                    >
-                      +
-                    </button>
+                    >+</button>
                   </div>
 
                   <select
@@ -411,11 +412,15 @@ export default function AIGroceryList({ onAddToCart, openCheckout }) {
                     <optgroup label="Produce & Proteins">
                       <option value="kg">1 Kilogram (1kg)</option>
                       <option value="1/2kg">1/2 Kilogram (0.5kg)</option>
+                      <option value="2.5kg">2.5kg</option>
+                      <option value="5kg">5kg</option>
+                      <option value="10kg">10kg</option>
                       <option value="tuber">Tuber (Yam / Potato)</option>
                       <option value="bunch">Bunch (Plantain / Veggies)</option>
                       <option value="pieces">Pieces (Wara / Meat)</option>
                       <option value="crate">Crate (Eggs)</option>
                       <option value="basket">Full Basket</option>
+                      <option value="half_basket">Half Basket</option>
                     </optgroup>
                     <optgroup label="Grains & Staples">
                       <option value="paint_rubber">Paint Rubber</option>
@@ -424,6 +429,7 @@ export default function AIGroceryList({ onAddToCart, openCheckout }) {
                       <option value="full_bag">1 Bag (50kg)</option>
                       <option value="half_bag">1/2 Bag (25kg)</option>
                       <option value="1/4_bag">1/4 Bag (12.5kg)</option>
+                      <option value="1/8_bag">1/8 Bag (6.25kg)</option>
                     </optgroup>
                     <optgroup label="Oils & Liquids">
                       <option value="75cl">75cl Bottle</option>
@@ -439,6 +445,7 @@ export default function AIGroceryList({ onAddToCart, openCheckout }) {
                       <option value="roll">Roll</option>
                       <option value="sachet">Sachet</option>
                       <option value="dozen">One Dozen (12 pcs)</option>
+                      <option value="plate">Plate (Meals)</option>
                     </optgroup>
                   </select>
 
@@ -449,30 +456,15 @@ export default function AIGroceryList({ onAddToCart, openCheckout }) {
                       setParsedResult(updated.length > 0 ? { ...parsedResult, items: updated } : null);
                     }}
                     className="text-red-500 hover:text-red-700 text-xs font-bold p-1 ml-1 cursor-pointer"
-                    title="Remove Item"
-                  >
-                    ✕
-                  </button>
+                  >✕</button>
                 </div>
               </div>
             ))}
           </div>
 
           <div className="flex gap-2 pt-1">
-            <button
-              type="button"
-              onClick={handleAddNewItem}
-              className="px-3 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-800 font-semibold rounded-lg text-xs transition-all cursor-pointer"
-            >
-              + Add Item
-            </button>
-            <button 
-              type="button"
-              onClick={handleProceedToCheckout}
-              className="flex-1 bg-slate-900 hover:bg-slate-800 text-white font-semibold py-2.5 rounded-lg text-xs transition-all cursor-pointer"
-            >
-              Get Price Quote & Checkout →
-            </button>
+            <button type="button" onClick={handleAddNewItem} className="px-3 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-800 font-semibold rounded-lg text-xs cursor-pointer">+ Add Item</button>
+            <button type="button" onClick={handleProceedToCheckout} className="flex-1 bg-slate-900 hover:bg-slate-800 text-white font-semibold py-2.5 rounded-lg text-xs cursor-pointer">Get Price Quote & Checkout →</button>
           </div>
         </div>
       )}

@@ -193,7 +193,7 @@ function PendingVendorsManager({ API_URL, adminPin }) {
     }
   };
 
- const handleApprove = async (id, name) => {
+  const handleApprove = async (id, name) => {
     try {
       await axios.put(`${API_URL}/api/admin/vendors/${id}/verify`, {}, {
         headers: { 'x-admin-pin': adminPin }
@@ -244,7 +244,6 @@ function PendingVendorsManager({ API_URL, adminPin }) {
                   Category: <span className="text-teal-700 font-bold">{vendor.vendor_category}</span> • Phone: <a href={`tel:${vendor.phone_number}`} className="underline font-bold text-slate-800">{vendor.phone_number}</a>
                 </span>
                 
-                {/* 🏦 Review Bank Details if provided */}
                 {vendor.account_number && (
                   <span className="text-[11px] text-emerald-800 font-semibold block">
                     🏦 Payout Acct: {vendor.bank_name} • <span className="font-mono">{vendor.account_number}</span> ({vendor.account_name})
@@ -256,7 +255,6 @@ function PendingVendorsManager({ API_URL, adminPin }) {
                 </span>
               </div>
 
-              {/* Action Buttons */}
               <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
                 <button 
                   onClick={() => handleApprove(vendor.id, vendor.full_name)}
@@ -391,7 +389,6 @@ export default function AdminDashboard() {
   const API_URL = import.meta.env.VITE_API_URL || 'https://shopin-kwara-backend.onrender.com';
   const adminPin = localStorage.getItem('SHOPIN_ADMIN_PIN') || '1234';
 
-  // 🌟 NEW: CREDIT WALLET STATE
   const [creditShopinId, setCreditShopinId] = useState('');
   const [creditAmount, setCreditAmount] = useState('');
 
@@ -543,7 +540,6 @@ export default function AdminDashboard() {
     }
   };
 
-  // 🌟 FUNCTION TO UPDATE ORDER STATUS
   const handleUpdateOrderStatus = async (orderId, newStatus) => {
     try {
       if (shopinApi && shopinApi.updateOrderStatus) {
@@ -563,6 +559,22 @@ export default function AdminDashboard() {
         type: 'error', 
         text: err.response?.data?.error || 'Failed to update order status.' 
       });
+    }
+  };
+
+  const handleDeleteOrder = async (orderId, orderCode) => {
+    if (!window.confirm(`Are you sure you want to permanently delete order ${orderCode}?`)) {
+      return;
+    }
+
+    try {
+      await axios.delete(`${API_URL}/api/admin/orders/${orderId}`, {
+        headers: { 'x-admin-pin': adminPin }
+      });
+      setFeedback({ type: 'success', text: `Order ${orderCode} deleted successfully.` });
+      fetchPendingOrders();
+    } catch (err) {
+      setFeedback({ type: 'error', text: 'Failed to delete order.' });
     }
   };
 
@@ -764,6 +776,10 @@ export default function AdminDashboard() {
     }
   };
 
+  const activePendingOrders = pendingOrders.filter(
+    ord => ord.order_status !== 'COMPLETED' && ord.order_status !== 'DELIVERED'
+  );
+
   return (
     <div className="space-y-6">
       <div className="bg-slate-900 text-white p-5 rounded-2xl shadow-md flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -883,7 +899,6 @@ export default function AdminDashboard() {
                       ₦{Number(dep.amount_ngn).toLocaleString()}
                     </div>
                     
-                    {/* 🌟 Transfer Name Tag */}
                     <div className="text-xs font-semibold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-md inline-block mt-1 border border-amber-200">
                       Transfer Name: <span className="uppercase font-black">{dep.sender_name || 'Not Provided'}</span>
                     </div>
@@ -893,7 +908,6 @@ export default function AdminDashboard() {
                     </div>
                   </div>
 
-                  {/* Action Buttons: Approve & Reject */}
                   <div className="flex flex-col sm:flex-row gap-2">
                     <button 
                       onClick={() => handleApproveDeposit(dep.id, dep.full_name, dep.amount_ngn)} 
@@ -940,7 +954,7 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* 🌟 TAB: USERS & WALLET REFUNDS */}
+      {/* TAB: USERS & WALLET REFUNDS */}
       {activeAdminTab === 'users' && (
         <div className="max-w-4xl mx-auto space-y-6">
           <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-4">
@@ -972,30 +986,45 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* 🌟 TAB: ORDERS & QUOTES */}
+      {/* TAB: ORDERS & QUOTES */}
       {activeAdminTab === 'orders' && (
         <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs max-w-4xl mx-auto space-y-4">
-          <h3 className="font-extrabold text-slate-900 text-base border-b border-slate-100 pb-2">Pending Errands Review</h3>
-          {pendingOrders.length === 0 ? (
-            <div className="p-8 text-center bg-slate-50 rounded-xl border border-dashed text-slate-500 text-xs">No pending orders.</div>
+          <div className="flex justify-between items-center border-b border-slate-100 pb-2">
+            <h3 className="font-extrabold text-slate-900 text-base">Pending Errands Review ({activePendingOrders.length})</h3>
+            <button onClick={fetchPendingOrders} className="text-xs font-bold text-emerald-600 hover:text-emerald-700 cursor-pointer">
+              🔄 Refresh Orders
+            </button>
+          </div>
+
+          {activePendingOrders.length === 0 ? (
+            <div className="p-8 text-center bg-slate-50 rounded-xl border border-dashed text-slate-500 text-xs">
+              No active pending orders. All caught up!
+            </div>
           ) : (
             <div className="space-y-3">
-              {pendingOrders.map((ord) => (
-                <div key={ord.id} className="p-4 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between text-xs">
-                  <div>
-                    <p className="font-bold text-slate-900">{ord.order_code}</p>
-                    <p className="text-slate-600 italic mt-1">"{ord.raw_input_text}"</p>
-                    <p className="font-semibold mt-1">Est. Total: ₦{Number(ord.total_estimated_cost || 0).toLocaleString()}</p>
-                    <p className="text-[10px] text-emerald-700 font-bold mt-1">
+              {activePendingOrders.map((ord) => (
+                <div key={ord.id} className="p-4 bg-slate-50 border border-slate-200 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between text-xs gap-3">
+                  <div className="space-y-1">
+                    <p className="font-bold text-slate-900 text-sm">{ord.order_code}</p>
+                    <p className="text-slate-600 italic">"{ord.raw_input_text}"</p>
+                    <p className="font-semibold text-slate-800">
+                      Est. Total: <span className="font-bold text-emerald-700">₦{Number(ord.total_estimated_cost || 0).toLocaleString()}</span>
+                      {ord.deposit_paid !== undefined && (
+                        <span className="text-slate-500 text-[11px] font-normal ml-2">
+                          (Paid: ₦{Number(ord.deposit_paid).toLocaleString()})
+                        </span>
+                      )}
+                    </p>
+                    <p className="text-[10px] text-emerald-700 font-bold">
                       Current Status: {ord.order_status || 'PENDING_CONFIRMATION'}
                     </p>
                   </div>
                   
-                  <div className="flex flex-col gap-2 items-end">
+                  <div className="flex flex-col gap-2 items-start sm:items-end w-full sm:w-auto">
                     <select
                       value={ord.order_status || 'PENDING_CONFIRMATION'}
                       onChange={(e) => handleUpdateOrderStatus(ord.id, e.target.value)}
-                      className="bg-white border border-slate-300 text-slate-800 rounded-lg p-2 text-[10px] font-bold outline-none cursor-pointer w-44 focus:border-emerald-500 shadow-sm"
+                      className="bg-white border border-slate-300 text-slate-800 rounded-lg p-2 text-[10px] font-bold outline-none cursor-pointer w-full sm:w-48 focus:border-emerald-500 shadow-xs"
                     >
                       <option value="PENDING_CONFIRMATION">Pending Confirmation</option>
                       <option value="SHOPPING">Market Sourcing</option>
@@ -1004,20 +1033,37 @@ export default function AdminDashboard() {
                       <option value="COMPLETED">Delivered</option>
                     </select>
 
-                    <div className="flex gap-2 w-44">
-                      <button onClick={() => { setOverrideModalOrder(ord); setCustomTotalCost(ord.total_estimated_cost || ''); setCustomDeliveryFee(ord.delivery_fee || ''); setCustomServiceFee(ord.service_fee || ''); }} className="flex-1 bg-slate-900 hover:bg-slate-800 text-white font-bold py-2 rounded-lg cursor-pointer transition shadow-sm text-[10px]">
+                    <div className="flex items-center gap-1.5 w-full sm:w-48">
+                      <button 
+                        onClick={() => { 
+                          setOverrideModalOrder(ord); 
+                          setCustomTotalCost(ord.total_estimated_cost || ''); 
+                          setCustomDeliveryFee(ord.delivery_fee || ''); 
+                          setCustomServiceFee(ord.service_fee || ''); 
+                        }} 
+                        className="flex-1 bg-slate-900 hover:bg-slate-800 text-white font-bold py-2 rounded-lg cursor-pointer transition shadow-xs text-[10px] text-center"
+                      >
                         Override ✍️
                       </button>
-                      
+
                       <a 
                         href={`https://wa.me/${ord.user_phone || ord.customer_phone || ''}?text=${encodeURIComponent(`Hello! This is ShopIn Admin. There is a slight price update for your order (${ord.order_code}). Please open your ShopIn app to view the details and balance up so your shopper can proceed! 🚀`)}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex-1 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 font-bold py-2 rounded-lg cursor-pointer transition shadow-sm text-[10px] text-center flex items-center justify-center"
+                        className="flex-1 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 font-bold py-2 rounded-lg cursor-pointer transition shadow-xs text-[10px] text-center"
                         title="Send WhatsApp Alert"
                       >
                         📲 Alert
                       </a>
+
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteOrder(ord.id, ord.order_code)}
+                        className="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold px-2.5 py-2 rounded-lg text-[10px] cursor-pointer transition"
+                        title="Delete Order"
+                      >
+                        🗑️
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -1026,18 +1072,18 @@ export default function AdminDashboard() {
           )}
           
           {overrideModalOrder && (
-             <div className="fixed inset-0 bg-slate-900/50 flex items-center justify-center p-4 z-50">
-               <form onSubmit={handleSaveQuoteOverride} className="bg-white rounded-2xl p-6 max-w-md w-full space-y-4 shadow-xl">
-                 <h4 className="font-extrabold text-sm border-b pb-2">Override Quote for {overrideModalOrder.order_code}</h4>
-                 <input type="number" value={customTotalCost} onChange={(e) => setCustomTotalCost(e.target.value)} required placeholder="New Total (₦)" className="w-full p-2.5 border rounded-xl text-xs font-bold" />
-                 <input type="number" value={customDeliveryFee} onChange={(e) => setCustomDeliveryFee(e.target.value)} placeholder="Delivery Fee (₦)" className="w-full p-2.5 border rounded-xl text-xs font-bold" />
-                 <input type="number" value={customServiceFee} onChange={(e) => setCustomServiceFee(e.target.value)} placeholder="Service Fee (₦)" className="w-full p-2.5 border rounded-xl text-xs font-bold" />
-                 <div className="flex gap-2">
-                   <button type="button" onClick={() => setOverrideModalOrder(null)} className="flex-1 bg-slate-200 py-2.5 rounded-xl font-bold text-xs cursor-pointer">Cancel</button>
-                   <button type="submit" className="flex-1 bg-emerald-600 text-white py-2.5 rounded-xl font-bold text-xs cursor-pointer">Save</button>
-                 </div>
-               </form>
-             </div>
+            <div className="fixed inset-0 bg-slate-900/50 flex items-center justify-center p-4 z-50">
+              <form onSubmit={handleSaveQuoteOverride} className="bg-white rounded-2xl p-6 max-w-md w-full space-y-4 shadow-xl">
+                <h4 className="font-extrabold text-sm border-b pb-2">Override Quote for {overrideModalOrder.order_code}</h4>
+                <input type="number" value={customTotalCost} onChange={(e) => setCustomTotalCost(e.target.value)} required placeholder="New Total (₦)" className="w-full p-2.5 border rounded-xl text-xs font-bold" />
+                <input type="number" value={customDeliveryFee} onChange={(e) => setCustomDeliveryFee(e.target.value)} placeholder="Delivery Fee (₦)" className="w-full p-2.5 border rounded-xl text-xs font-bold" />
+                <input type="number" value={customServiceFee} onChange={(e) => setCustomServiceFee(e.target.value)} placeholder="Service Fee (₦)" className="w-full p-2.5 border rounded-xl text-xs font-bold" />
+                <div className="flex gap-2">
+                  <button type="button" onClick={() => setOverrideModalOrder(null)} className="flex-1 bg-slate-200 py-2.5 rounded-xl font-bold text-xs cursor-pointer">Cancel</button>
+                  <button type="submit" className="flex-1 bg-emerald-600 text-white py-2.5 rounded-xl font-bold text-xs cursor-pointer">Save</button>
+                </div>
+              </form>
+            </div>
           )}
         </div>
       )}
@@ -1245,7 +1291,6 @@ export default function AdminDashboard() {
               <div className="space-y-3">
                 {existingPools.map(pool => (
                   <div key={pool.id} className="p-4 bg-slate-50 border border-slate-200 rounded-xl text-xs flex flex-col sm:flex-row justify-between sm:items-center gap-3">
-                    
                     {editingPoolId === pool.id ? (
                       <div className="flex-1 space-y-2">
                         <input type="text" value={editPoolData.item_name || ''} onChange={e => setEditPoolData({...editPoolData, item_name: e.target.value})} className="w-full p-2 border rounded" placeholder="Pool Title" />
@@ -1294,13 +1339,13 @@ export default function AdminDashboard() {
       {/* TAB: SHUTTLES */}
       {activeAdminTab === 'shuttles' && (
         <form onSubmit={handleCreateShuttle} className="bg-white border rounded-2xl p-6 shadow-xs max-w-xl mx-auto space-y-4">
-           <h3 className="font-extrabold text-base border-b pb-2">Launch Shuttle Route</h3>
-           <input type="text" value={routeName} onChange={(e) => setRouteName(e.target.value)} placeholder="Route Name" required className="w-full p-2.5 border rounded-xl text-xs" />
-           <div className="grid grid-cols-2 gap-3">
-             <input type="text" value={dispatchTime} onChange={(e) => setDispatchTime(e.target.value)} placeholder="12:00 PM" required className="w-full p-2.5 border rounded-xl text-xs" />
-             <input type="number" value={maxCapacity} onChange={(e) => setMaxCapacity(e.target.value)} placeholder="Capacity" className="w-full p-2.5 border rounded-xl text-xs" />
-           </div>
-           <button type="submit" className="w-full bg-blue-600 text-white font-bold py-3 rounded-xl text-xs">Launch 🚀</button>
+          <h3 className="font-extrabold text-base border-b pb-2">Launch Shuttle Route</h3>
+          <input type="text" value={routeName} onChange={(e) => setRouteName(e.target.value)} placeholder="Route Name" required className="w-full p-2.5 border rounded-xl text-xs" />
+          <div className="grid grid-cols-2 gap-3">
+            <input type="text" value={dispatchTime} onChange={(e) => setDispatchTime(e.target.value)} placeholder="12:00 PM" required className="w-full p-2.5 border rounded-xl text-xs" />
+            <input type="number" value={maxCapacity} onChange={(e) => setMaxCapacity(e.target.value)} placeholder="Capacity" className="w-full p-2.5 border rounded-xl text-xs" />
+          </div>
+          <button type="submit" className="w-full bg-blue-600 text-white font-bold py-3 rounded-xl text-xs">Launch 🚀</button>
         </form>
       )}
 

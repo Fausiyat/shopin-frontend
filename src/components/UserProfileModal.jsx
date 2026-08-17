@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import shopinApi from '../services/api';
+import shopinApi, { getOrCreateShopinId } from '../services/api';
 
 export default function UserProfileModal({ onClose, onProfileUpdated }) {
   // Load existing data from localStorage or default state

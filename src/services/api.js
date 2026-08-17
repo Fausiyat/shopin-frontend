@@ -31,6 +31,16 @@ export const registerUser = (userData) => api.post('/users/register', userData);
 export const saveAddress = (addressData) => api.post('/users/address', addressData);
 export const updateUserProfile = (profileData) => api.put('/users/profile', profileData);
 export const saveUserAddress = (addressData) => api.post('/users/address', addressData);
+// --- User Identification Helper ---
+export const getOrCreateShopinId = () => {
+  let savedId = localStorage.getItem('SHOPIN_USER_ID');
+  if (!savedId) {
+    const randomNum = Math.floor(1000 + Math.random() * 9000);
+    savedId = `SHP-ILR-${randomNum}`;
+    localStorage.setItem('SHOPIN_USER_ID', savedId);
+  }
+  return savedId;
+};
 
 // --- AI & Orders ---
 export const parseGroceryList = (rawText) => api.post('/orders/parse-list', { raw_text: rawText, text: rawText });
@@ -183,6 +193,7 @@ export const shopinApi = {
   registerVendor,
   getVendorProducts,
   addVendorProduct,
+  getOrCreateShopinId,
   submitReview,
   addVendorReview,
   checkoutEscrow,

@@ -9,8 +9,8 @@ export default function UserProfileModal({ onClose, onProfileUpdated }) {
   const [address, setAddress] = useState(() => localStorage.getItem('SHOPIN_USER_ADDRESS') || '');
   
   // The unique ShopIn ID (Read-only, pulled from local storage)
-  const shopinId = localStorage.getItem('SHOPIN_USER_ID') || 'SHP-ILR-1001'; 
-
+  const [shopinId] = useState(() => getOrCreateShopinId());
+ 
   const [isSaving, setIsSaving] = useState(false);
   const [feedback, setFeedback] = useState(null);
 

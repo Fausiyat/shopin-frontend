@@ -62,12 +62,17 @@ function App() {
     }
 
     const fetchLiveUpdates = async () => {
+      const shopinId = getOrCreateShopinId();
       try {
         const orderRes = await shopinApi.getUserOrders(shopinId);
-        const orders = orderRes.data?.orders || [];
+        const orders = orderRes.data?.orders 
+          || orderRes.data?.data 
+          || (Array.isArray(orderRes.data) ? orderRes.data : []);
         setOrderHistory(orders);
 
-        const currentActive = orders.find(o => o.order_status !== 'COMPLETED');
+        const currentActive = orders.find(
+          o => o.order_status !== 'COMPLETED' && o.order_status !== 'DELIVERED'
+        );
         
         if (currentActive) {
           setActiveOrderId(currentActive.id || currentActive.order_code);
@@ -79,9 +84,13 @@ function App() {
           setActiveOrder(null);
         }
 
+        // 4. Fetch Stash Wallet Balance
         const walletRes = await shopinApi.getWalletBalance(shopinId);
         if (walletRes.data) {
-          setWalletBalance(Number(walletRes.data.available_balance) || 0);
+          const balance = walletRes.data.available_balance 
+            ?? walletRes.data.balance 
+            ?? 0;
+          setWalletBalance(Number(balance));
         }
 
       } catch (err) {

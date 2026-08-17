@@ -348,6 +348,8 @@ export default function CheckoutModal({
         marketBuffer: marketBuffer
       });
 
+      localStorage.setItem('SHOPIN_LAST_PAID_AMOUNT', grandTotal);
+
       setOrderData(createdOrder);
       setIsConfirmed(true);
 

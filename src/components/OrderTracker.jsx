@@ -72,17 +72,18 @@ export default function OrderTracker({ orderStatus = 'PENDING_CONFIRMATION', act
       {orderStatus === 'ACTION_REQUIRED' && (() => {
         const revisedTotal = Number(activeOrder?.total_estimated_cost || activeOrder?.estimated_total || 0);
 
-        // 🌟 Look for the initial deposit across all possible stored locations
+        // 🌟 Bulletproof Fix: Check database fields FIRST, then fallback to LocalStorage session data!
+        const localCheckoutTotal = Number(localStorage.getItem('SHOPIN_LAST_PAID_AMOUNT') || 0);
+
         const alreadyPaid = Number(
           activeOrder?.deposit_paid ??
           activeOrder?.amount_paid ??
-          activeOrder?.paid_amount ??
           activeOrder?.parsed_json?.deposit_paid ??
-          activeOrder?.parsed_json?.estimated_total ??
+          localCheckoutTotal ?? 
           0
         );
 
-        // Calculate only the difference needed
+        // 🌟 Ensure we subtract correctly so only the remaining balance is shown
         const balanceRemaining = Math.max(0, revisedTotal - alreadyPaid);
 
         return (

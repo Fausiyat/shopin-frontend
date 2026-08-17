@@ -166,10 +166,10 @@ export default function VendorMarketplace({ marketFilter, searchTerm, onAddToCar
     const data = new FormData();
     data.append('file', file);
     data.append('upload_preset', 'ShopIn_preset');
-    data.append('cloud_name', 'ShopIn');
+    data.append('cloud_name', 'yqswwh02');
 
     try {
-      const res = await fetch('https://api.cloudinary.com/v1_1/ShopIn/image/upload', {
+      const res = await fetch('https://api.cloudinary.com/v1_1/yqswwh02/image/upload', {
         method: 'POST',
         body: data
       });

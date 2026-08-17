@@ -786,8 +786,11 @@ export default function AdminDashboard() {
       await shopinApi.overrideOrderQuote(overrideModalOrder.id, {
         total_estimated_cost: parseFloat(customTotalCost),
         delivery_fee: customDeliveryFee ? parseFloat(customDeliveryFee) : undefined,
-        service_fee: customServiceFee ? parseFloat(customServiceFee) : undefined
+        service_fee: customServiceFee ? parseFloat(customServiceFee) : undefined,
+        // 🌟 Pass the original amount paid so the backend and tracker know the baseline!
+        deposit_paid: overrideModalOrder.deposit_paid || overrideModalOrder.amount_paid || 0
       }, adminPin);
+      
       setFeedback({ type: 'success', text: `Successfully updated quote for order ${overrideModalOrder.order_code}!` });
       setOverrideModalOrder(null);
       fetchPendingOrders();

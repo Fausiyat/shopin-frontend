@@ -62,7 +62,9 @@ function App() {
     }
 
     const fetchLiveUpdates = async () => {
-      const shopinId = shopinApi.getOrCreateShopinId();
+      // 🌟 FIXED THE CRASHING ERROR HERE:
+      const shopinId = shopinApi.getOrCreateShopinId(); 
+      
       try {
         const orderRes = await shopinApi.getUserOrders(shopinId);
         const orders = orderRes.data?.orders 

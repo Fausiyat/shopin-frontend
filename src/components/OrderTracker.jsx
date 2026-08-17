@@ -82,7 +82,12 @@ export default function OrderTracker({ orderStatus = 'PENDING_CONFIRMATION', act
           localCheckoutTotal ?? 
           0
         );
+        
+        if (alreadyPaid === 0) {
+          alreadyPaid = Number(activeOrder?.estimated_item_cost || 0);
+        }
 
+        
         // 🌟 Ensure we subtract correctly so only the remaining balance is shown
         const balanceRemaining = Math.max(0, revisedTotal - alreadyPaid);
 

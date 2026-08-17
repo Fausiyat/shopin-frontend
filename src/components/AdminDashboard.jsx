@@ -543,21 +543,26 @@ export default function AdminDashboard() {
     }
   };
 
-  // 🌟 NEW: FUNCTION TO UPDATE ORDER STATUS
+  // 🌟 FUNCTION TO UPDATE ORDER STATUS
   const handleUpdateOrderStatus = async (orderId, newStatus) => {
     try {
       if (shopinApi && shopinApi.updateOrderStatus) {
-         await shopinApi.updateOrderStatus(orderId, newStatus, adminPin);
+        await shopinApi.updateOrderStatus(orderId, { order_status: newStatus }, adminPin);
       } else {
-         await axios.put(`${API_URL}/api/admin/orders/${orderId}/status`, 
-           { order_status: newStatus }, 
-           { headers: { 'x-admin-pin': adminPin } }
-         );
+        await axios.put(
+          `${API_URL}/api/admin/orders/${orderId}/status`, 
+          { order_status: newStatus }, 
+          { headers: { 'x-admin-pin': adminPin } }
+        );
       }
       setFeedback({ type: 'success', text: `Order status updated to ${newStatus}` });
       fetchPendingOrders(); 
     } catch (err) {
-      setFeedback({ type: 'error', text: 'Failed to update order status.' });
+      console.error('Order status update error:', err.response?.data || err.message);
+      setFeedback({ 
+        type: 'error', 
+        text: err.response?.data?.error || 'Failed to update order status.' 
+      });
     }
   };
 

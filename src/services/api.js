@@ -40,7 +40,18 @@ export const getQuote = (items, zoneName) => api.post('/orders/quote', { items, 
 export const createMasterOrder = (orderData) => api.post('/orders/create', orderData);
 export const processVoiceNote = (voiceData) => api.post('/orders/voice-note', voiceData);
 export const getUserOrders = (shopinId) => api.get('/user/orders', { params: { shopin_id: shopinId } });
-export const updateOrderStatus = (orderId, statusData) => api.put(`/orders/${orderId}/status`, statusData);
+// --- Orders Status Management ---
+export const updateOrderStatus = (orderId, statusData, adminPin) => {
+  const payload = typeof statusData === 'string' 
+    ? { order_status: statusData } 
+    : statusData;
+
+  const pin = adminPin || localStorage.getItem('SHOPIN_ADMIN_PIN') || '1234';
+
+  return api.put(`/admin/orders/${orderId}/status`, payload, {
+    headers: { 'x-admin-pin': pin }
+  });
+};
 
 // --- Wallet & Deposits ---
 export const depositWallet = (walletData, optionalAmount) => {
@@ -152,6 +163,7 @@ export const shopinApi = {
   getMarketTicker,
   getLocations,
   getShopperPickingList,
+  updateOrderStatus,
   getPickingList,
   addMarketPrice,
   updateShopperPin,

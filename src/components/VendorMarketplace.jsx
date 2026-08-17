@@ -330,11 +330,22 @@ export default function VendorMarketplace({ marketFilter, searchTerm, onAddToCar
               filteredProducts.map((prod) => (
                 <div key={prod.id} className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs hover:shadow-md transition flex flex-col justify-between space-y-3">
                   <div>
+                    {/* 🌟 REPLACEMENT WITH CLOUDINARY AUTO-COMPRESSION & LAZY LOADING */}
                     {prod.image_url && (
                       <div className="w-full h-32 bg-slate-100 rounded-xl mb-3 overflow-hidden">
-                        <img src={prod.image_url} alt={prod.product_name} className="w-full h-full object-cover" />
+                        <img 
+                          src={
+                            prod.image_url.includes('/upload/') 
+                              ? prod.image_url.replace('/upload/', '/upload/f_auto,q_auto,w_600/') 
+                              : prod.image_url
+                          } 
+                          alt={prod.product_name} 
+                          loading="lazy"
+                          className="w-full h-full object-cover" 
+                        />
                       </div>
                     )}
+                   
                     
                     <div className="flex justify-between items-start mb-1.5 gap-2">
                       <span className={`text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded ${

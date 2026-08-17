@@ -159,9 +159,16 @@ export default function OrderTracker({ orderStatus = 'PENDING_CONFIRMATION', act
             onClick={async () => {
               setIsSubmitting(true);
               try {
-                const productId = activeOrder?.parsed_json?.product_id || 'v-prod-1';
-                await axios.post(`${import.meta.env.VITE_API_URL || 'https://shopin-kwara-backend.onrender.com'}/api/vendors/reviews`, {
-                  product_id: productId, 
+                const firstItem = activeOrder?.parsed_json?.items?.[0];
+                const productId = firstItem?.id || activeOrder?.product_id || 'v-prod-1';
+                const vendorId = firstItem?.vendorId || activeOrder?.vendor_id || null;
+                            
+                const API_ENDPOINT = import.meta.env.VITE_API_URL || 'https://shopin-kwara-backend.onrender.com'; 
+
+                await axios.post(`${API_ENDPOINT}/api/vendors/reviews`, {
+                  order_id: activeOrder?.id,
+                  product_id: productId,
+                  vendor_id: vendorId,
                   rating: rating
                 });
                 setReviewSubmitted(true);

@@ -82,9 +82,9 @@ export default function OrderTracker({ orderStatus = 'PENDING_CONFIRMATION', act
           localCheckoutTotal ?? 
           0
         );
-        
+
         if (alreadyPaid === 0) {
-          alreadyPaid = Number(activeOrder?.estimated_item_cost || 0);
+          alreadyPaid = Number(activeOrder?.estimated_item_cost || activeOrder?.parsed_json?.estimated_total || 0);
         }
 
         

@@ -153,6 +153,12 @@ export const getUserStats = getAdminUsers;
 // In src/services/api.js:
 export const updateVendorProduct = (id, data) => api.put(`/admin/vendor-products/${id}`, data);
 export const deleteVendorProduct = (id) => api.delete(`/admin/vendor-products/${id}`);
+export const overrideOrderQuote = (orderId, quoteData, adminPin) => {
+  const pin = adminPin || localStorage.getItem('SHOPIN_ADMIN_PIN') || '1234';
+  return api.put(`/admin/orders/${orderId}/override-quote`, quoteData, {
+    headers: { 'x-admin-pin': pin }
+  });
+};
 
 // 3. Consolidated Main ShopIn API Object
 export const shopinApi = {
@@ -169,6 +175,7 @@ export const shopinApi = {
   processVoiceNote,
   getUserOrders,
   updateOrderStatus,
+  overrideOrderQuote,
   depositWallet,
   requestDeposit,
   verifyPaystack,

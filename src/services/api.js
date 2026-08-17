@@ -150,6 +150,10 @@ export const sendReceiptNotification = (receiptData) => api.post('/notifications
 export const getAdminUsers = () => api.get('/admin/users');
 export const getUserStats = getAdminUsers;
 
+// In src/services/api.js:
+export const updateVendorProduct = (id, data) => api.put(`/admin/vendor-products/${id}`, data);
+export const deleteVendorProduct = (id) => api.delete(`/admin/vendor-products/${id}`);
+
 // 3. Consolidated Main ShopIn API Object
 export const shopinApi = {
   healthCheck: () => api.get('/health'),
@@ -192,7 +196,9 @@ export const shopinApi = {
   joinShuttle,
   registerVendor,
   getVendorProducts,
+  updateVendorProduct,
   addVendorProduct,
+  deleteVendorProduct,
   getOrCreateShopinId,
   submitReview,
   addVendorReview,

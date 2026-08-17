@@ -174,6 +174,13 @@ function PendingVendorsManager({ API_URL, adminPin }) {
   const [pendingVendors, setPendingVendors] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // 🏦 Edit Payout Details State
+  const [editingVendorId, setEditingVendorId] = useState(null);
+  const [bankNameInput, setBankNameInput] = useState('');
+  const [acctNumInput, setAcctNumInput] = useState('');
+  const [acctNameInput, setAcctNameInput] = useState('');
+  const [isSavingBank, setIsSavingBank] = useState(false);
+
   useEffect(() => {
     fetchPendingVendors();
   }, []);
@@ -221,6 +228,36 @@ function PendingVendorsManager({ API_URL, adminPin }) {
     }
   };
 
+  // 💾 Save / Update Vendor Bank Details
+  const handleSaveVendorBank = async (vendorId) => {
+    if (!bankNameInput.trim() || !acctNumInput.trim()) {
+      return alert("Bank name and account number are required!");
+    }
+
+    setIsSavingBank(true);
+    try {
+      await axios.put(
+        `${API_URL}/api/admin/vendors/${vendorId}/bank-details`,
+        {
+          bank_name: bankNameInput.trim(),
+          account_number: acctNumInput.trim(),
+          account_name: acctNameInput.trim() || undefined
+        },
+        {
+          headers: { 'x-admin-pin': adminPin }
+        }
+      );
+
+      alert("✅ Vendor bank details updated successfully!");
+      setEditingVendorId(null);
+      fetchPendingVendors();
+    } catch (err) {
+      alert("❌ Failed to update bank details: " + (err.response?.data?.error || err.message));
+    } finally {
+      setIsSavingBank(false);
+    }
+  };
+
   if (loading) return <p className="text-xs text-slate-400">Loading pending vendors...</p>;
 
   return (
@@ -236,38 +273,122 @@ function PendingVendorsManager({ API_URL, adminPin }) {
           {pendingVendors.map(vendor => (
             <div 
               key={vendor.id} 
-              className="bg-amber-50/50 border border-amber-200 rounded-xl p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 text-xs"
+              className="bg-amber-50/50 border border-amber-200 rounded-xl p-4 flex flex-col justify-between items-start gap-3 text-xs"
             >
-              <div className="space-y-1">
-                <span className="font-extrabold text-slate-900 text-sm block">{vendor.full_name}</span>
-                <span className="text-slate-600 font-medium block">
-                  Category: <span className="text-teal-700 font-bold">{vendor.vendor_category}</span> • Phone: <a href={`tel:${vendor.phone_number}`} className="underline font-bold text-slate-800">{vendor.phone_number}</a>
-                </span>
-                
-                {vendor.account_number && (
-                  <span className="text-[11px] text-emerald-800 font-semibold block">
-                    🏦 Payout Acct: {vendor.bank_name} • <span className="font-mono">{vendor.account_number}</span> ({vendor.account_name})
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center w-full gap-3">
+                <div className="space-y-1">
+                  <span className="font-extrabold text-slate-900 text-sm block">{vendor.full_name}</span>
+                  <span className="text-slate-600 font-medium block">
+                    Category: <span className="text-teal-700 font-bold">{vendor.vendor_category}</span> • Phone: <a href={`tel:${vendor.phone_number}`} className="underline font-bold text-slate-800">{vendor.phone_number}</a>
                   </span>
-                )}
+                  
+                  {vendor.account_number ? (
+                    <span className="text-[11px] text-emerald-800 font-semibold block">
+                      🏦 Payout Acct: {vendor.bank_name} • <span className="font-mono">{vendor.account_number}</span> ({vendor.account_name || 'No Name Set'})
+                    </span>
+                  ) : (
+                    <span className="text-[11px] text-amber-700 font-medium italic block">
+                      ⚠️ No payout bank account attached
+                    </span>
+                  )}
 
-                <span className="text-[10px] text-slate-400 block mt-0.5">
-                  ID: {vendor.shopin_id} | Mode: {vendor.contact_mode || 'MIDDLEMAN'}
-                </span>
+                  <span className="text-[10px] text-slate-400 block mt-0.5">
+                    ID: {vendor.shopin_id} | Mode: {vendor.contact_mode || 'MIDDLEMAN'}
+                  </span>
+                </div>
+
+                {/* Approve & Reject Actions */}
+                <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                  <button 
+                    onClick={() => handleApprove(vendor.id, vendor.full_name)}
+                    className="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded-xl transition cursor-pointer whitespace-nowrap shadow-xs text-center"
+                  >
+                    Approve & Activate 🟢
+                  </button>
+                  <button 
+                    onClick={() => handleReject(vendor.id, vendor.full_name)}
+                    className="flex-1 sm:flex-none bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold px-3 py-2 rounded-xl transition cursor-pointer whitespace-nowrap text-center"
+                  >
+                    Reject ✕
+                  </button>
+                </div>
               </div>
 
-              <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-                <button 
-                  onClick={() => handleApprove(vendor.id, vendor.full_name)}
-                  className="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded-xl transition cursor-pointer whitespace-nowrap shadow-xs text-center"
-                >
-                  Approve & Activate 🟢
-                </button>
-                <button 
-                  onClick={() => handleReject(vendor.id, vendor.full_name)}
-                  className="flex-1 sm:flex-none bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold px-3 py-2 rounded-xl transition cursor-pointer whitespace-nowrap text-center"
-                >
-                  Reject ✕
-                </button>
+              {/* 🏦 Inline Form to Add / Edit Bank Account */}
+              <div className="w-full pt-2 border-t border-amber-200/60">
+                {editingVendorId === vendor.id ? (
+                  <div className="bg-white p-3.5 border border-amber-300 rounded-xl space-y-2.5 shadow-xs">
+                    <p className="font-bold text-[11px] text-slate-800 flex items-center gap-1">
+                      <span>🏦</span> Update Payout Account for {vendor.full_name}
+                    </p>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-[10px] font-bold text-slate-500 block mb-0.5">Bank Name *</label>
+                        <input 
+                          type="text" 
+                          value={bankNameInput} 
+                          onChange={(e) => setBankNameInput(e.target.value)} 
+                          placeholder="e.g. OPay, GTBank" 
+                          className="w-full p-2 border border-slate-300 rounded-lg text-xs bg-slate-50 focus:bg-white outline-none focus:border-emerald-500" 
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-bold text-slate-500 block mb-0.5">Account Number (10 Digits) *</label>
+                        <input 
+                          type="text" 
+                          maxLength="10" 
+                          value={acctNumInput} 
+                          onChange={(e) => setAcctNumInput(e.target.value)} 
+                          placeholder="0123456789" 
+                          className="w-full p-2 border border-slate-300 rounded-lg text-xs font-mono bg-slate-50 focus:bg-white outline-none focus:border-emerald-500" 
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-500 block mb-0.5">Account Name</label>
+                      <input 
+                        type="text" 
+                        value={acctNameInput} 
+                        onChange={(e) => setAcctNameInput(e.target.value)} 
+                        placeholder="Registered Name on Bank Account" 
+                        className="w-full p-2 border border-slate-300 rounded-lg text-xs bg-slate-50 focus:bg-white outline-none focus:border-emerald-500" 
+                      />
+                    </div>
+
+                    <div className="flex gap-2 pt-1">
+                      <button 
+                        type="button"
+                        disabled={isSavingBank}
+                        onClick={() => handleSaveVendorBank(vendor.id)} 
+                        className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold px-4 py-2 rounded-lg text-xs cursor-pointer shadow-xs transition"
+                      >
+                        {isSavingBank ? 'Saving...' : 'Save Bank Details 💾'}
+                      </button>
+                      <button 
+                        type="button"
+                        onClick={() => setEditingVendorId(null)} 
+                        className="bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold px-3 py-2 rounded-lg text-xs cursor-pointer transition"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button 
+                    type="button"
+                    onClick={() => {
+                      setEditingVendorId(vendor.id);
+                      setBankNameInput(vendor.bank_name || '');
+                      setAcctNumInput(vendor.account_number || '');
+                      setAcctNameInput(vendor.account_name || '');
+                    }}
+                    className="text-[11px] text-teal-800 hover:text-teal-950 font-bold underline cursor-pointer inline-flex items-center gap-1"
+                  >
+                    {vendor.account_number ? '✏️ Edit Payout Account Details' : '➕ Attach Bank Account Details'}
+                  </button>
+                )}
               </div>
             </div>
           ))}

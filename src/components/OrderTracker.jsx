@@ -98,7 +98,7 @@ export default function OrderTracker({ orderStatus = 'PENDING_CONFIRMATION', act
               </div>
             </div>
 
-            {/* 💰 ITEMIZED BALANCE BREAKDOWN */}
+           {/* 💰 ITEMIZED BALANCE BREAKDOWN */}
             <div className="bg-amber-100/60 border border-amber-200 rounded-xl p-3.5 mb-3 text-xs space-y-1.5">
               <div className="flex justify-between text-slate-700">
                 <span>Revised Total Cost:</span>
@@ -115,7 +115,8 @@ export default function OrderTracker({ orderStatus = 'PENDING_CONFIRMATION', act
               <div className="flex justify-between text-amber-950 font-black border-t border-amber-200 pt-2 text-sm">
                 <span>Balance to Transfer:</span>
                 <span className="bg-amber-300 text-amber-950 px-2.5 py-0.5 rounded-md font-mono">
-                  ₦{(alreadyPaid > 0 ? balanceRemaining : revisedTotal).toLocaleString()}
+                  {/* 🌟 FIX: Use balanceRemaining here instead of revisedTotal! */}
+                  ₦{balanceRemaining.toLocaleString()}
                 </span>
               </div>
             </div>

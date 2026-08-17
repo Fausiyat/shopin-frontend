@@ -73,7 +73,7 @@ export default function OrderTracker({ orderStatus = 'PENDING_CONFIRMATION', act
         const revisedTotal = Number(activeOrder?.total_estimated_cost || activeOrder?.estimated_total || 0);
 
         // 🌟 Bulletproof Fix: Check database fields FIRST, then fallback to LocalStorage session data!
-        const localCheckoutTotal = Number(localStorage.getItem('SHOPIN_LAST_PAID_AMOUNT') || 0);
+        const localCheckoutTotal = Number(localStorage.getItem('SHOPIN_LAST_PAID_AMOUNT'));
 
         const alreadyPaid = Number(
           activeOrder?.deposit_paid ??
@@ -84,7 +84,7 @@ export default function OrderTracker({ orderStatus = 'PENDING_CONFIRMATION', act
         );
 
         if (alreadyPaid === 0) {
-          alreadyPaid = Number(activeOrder?.estimated_item_cost || activeOrder?.parsed_json?.estimated_total || 0);
+          alreadyPaid = Number(activeOrder?.estimated_item_cost || activeOrder?.parsed_json?.estimated_total);
         }
 
         

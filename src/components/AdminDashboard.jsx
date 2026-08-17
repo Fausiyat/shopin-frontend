@@ -31,8 +31,8 @@ function AdminProductsManager({ API_URL, adminPin }) {
   const fetchItems = async () => {
     try {
       const res = await axios.get(`${API_URL}/api/vendors/products`);
-      const fetchedData = res.data?.data || res.data;
-      if (Array.isArray(fetchedData) && fetchedData.length > 0) {
+      const fetchedData = res.data?.data || res.data?.products || res.data;
+      if (Array.isArray(fetchedData)) {
         setItems(fetchedData);
       }
     } catch (err) {
@@ -55,6 +55,22 @@ function AdminProductsManager({ API_URL, adminPin }) {
       setItems(prev => prev.map(item => item.id === id ? { ...item, product_name: newName, price_ngn: newPrice ? parseFloat(newPrice) : item.price_ngn } : item));
       alert("✅ Item updated locally!");
       setEditingItem(null);
+    }
+  };
+
+  // 🗑️ Delete item handler
+  const handleDeleteItem = async (id, name) => {
+    if (!window.confirm(`Are you sure you want to permanently delete "${name}"?`)) return;
+
+    try {
+      await axios.delete(`${API_URL}/api/admin/vendor-products/${id}`, {
+        headers: { 'x-admin-pin': adminPin }
+      });
+      alert("🗑️ Item deleted successfully!");
+      fetchItems();
+    } catch (err) {
+      setItems(prev => prev.filter(item => item.id !== id));
+      alert("Item deleted locally!");
     }
   };
 
@@ -155,12 +171,21 @@ function AdminProductsManager({ API_URL, adminPin }) {
                   <button onClick={() => setEditingItem(null)} className="bg-slate-300 px-2 py-1 rounded cursor-pointer">Cancel</button>
                 </div>
               ) : (
-                <button 
-                  onClick={() => { setEditingItem(item.id); setNewName(item.product_name); setNewPrice(item.price_ngn || ''); }} 
-                  className="bg-slate-900 hover:bg-slate-800 text-white font-bold px-3 py-1.5 rounded-lg cursor-pointer whitespace-nowrap"
-                >
-                  Edit Item ✍️
-                </button>
+                <div className="flex items-center gap-2">
+                  <button 
+                    onClick={() => { setEditingItem(item.id); setNewName(item.product_name); setNewPrice(item.price_ngn || ''); }} 
+                    className="bg-slate-900 hover:bg-slate-800 text-white font-bold px-3 py-1.5 rounded-lg cursor-pointer whitespace-nowrap"
+                  >
+                    Edit Item ✍️
+                  </button>
+                  <button 
+                    onClick={() => handleDeleteItem(item.id, item.product_name)} 
+                    className="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold px-2.5 py-1.5 rounded-lg cursor-pointer whitespace-nowrap transition"
+                    title="Delete Item"
+                  >
+                    🗑️
+                  </button>
+                </div>
               )}
             </div>
           ))}

@@ -112,6 +112,9 @@ export const submitReview = (reviewData) => api.post('/vendors/reviews', reviewD
 export const addVendorReview = submitReview;
 export const checkoutEscrow = (checkoutData) => api.post('/vendors/checkout', checkoutData);
 export const releaseEscrow = (escrowId) => api.post('/escrow/release', { escrow_id: escrowId });
+// Add under Named Exports:
+export const deleteVendor = (shopinId) => api.delete(`/admin/vendors/${shopinId}`);
+export const rejectVendor = deleteVendor;
 
 // --- Micro-Services ---
 export const registerServiceProvider = (providerData) => api.post('/services/register-provider', providerData);
@@ -156,6 +159,8 @@ export const shopinApi = {
   getActivePools,
   getPools,
   joinPool,
+  deleteVendor,
+  rejectVendor,
   createPoolCampaign,
   contributeToPool,
   getActiveDeliveryPools,

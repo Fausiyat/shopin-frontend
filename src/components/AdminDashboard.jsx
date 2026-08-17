@@ -193,7 +193,7 @@ function PendingVendorsManager({ API_URL, adminPin }) {
     }
   };
 
-  const handleApprove = async (id, name) => {
+ const handleApprove = async (id, name) => {
     try {
       await axios.put(`${API_URL}/api/admin/vendors/${id}/verify`, {}, {
         headers: { 'x-admin-pin': adminPin }
@@ -205,29 +205,72 @@ function PendingVendorsManager({ API_URL, adminPin }) {
     }
   };
 
+  const handleReject = async (id, name) => {
+    if (!window.confirm(`Are you sure you want to reject and delete "${name}"? This cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      await axios.delete(`${API_URL}/api/admin/vendors/${id}`, {
+        headers: { 'x-admin-pin': adminPin }
+      });
+      alert(`🗑️ ${name} was rejected and removed.`);
+      fetchPendingVendors();
+    } catch (err) {
+      alert("❌ Failed to reject vendor: " + (err.response?.data?.error || err.message));
+    }
+  };
+
   if (loading) return <p className="text-xs text-slate-400">Loading pending vendors...</p>;
 
   return (
     <div className="space-y-4">
-      <h3 className="font-bold text-sm text-slate-800 border-b pb-2">🛡️ Vendor Credibility Review ({pendingVendors.length})</h3>
+      <h3 className="font-bold text-sm text-slate-800 border-b pb-2">
+        🛡️ Vendor Credibility Review ({pendingVendors.length})
+      </h3>
       
       {pendingVendors.length === 0 ? (
         <p className="text-xs text-slate-400 py-6 text-center">No pending vendor applications to review.</p>
       ) : (
         <div className="space-y-3">
           {pendingVendors.map(vendor => (
-            <div key={vendor.id} className="bg-amber-50/50 border border-amber-200 rounded-xl p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 text-xs">
-              <div>
+            <div 
+              key={vendor.id} 
+              className="bg-amber-50/50 border border-amber-200 rounded-xl p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 text-xs"
+            >
+              <div className="space-y-1">
                 <span className="font-extrabold text-slate-900 text-sm block">{vendor.full_name}</span>
-                <span className="text-slate-600 font-medium">Category: <span className="text-teal-700 font-bold">{vendor.vendor_category}</span> • Phone: <a href={`tel:${vendor.phone_number}`} className="underline font-bold">{vendor.phone_number}</a></span>
-                <span className="text-[10px] text-slate-400 block mt-1">ID: {vendor.shopin_id} | Mode: {vendor.contact_mode}</span>
+                <span className="text-slate-600 font-medium block">
+                  Category: <span className="text-teal-700 font-bold">{vendor.vendor_category}</span> • Phone: <a href={`tel:${vendor.phone_number}`} className="underline font-bold text-slate-800">{vendor.phone_number}</a>
+                </span>
+                
+                {/* 🏦 Review Bank Details if provided */}
+                {vendor.account_number && (
+                  <span className="text-[11px] text-emerald-800 font-semibold block">
+                    🏦 Payout Acct: {vendor.bank_name} • <span className="font-mono">{vendor.account_number}</span> ({vendor.account_name})
+                  </span>
+                )}
+
+                <span className="text-[10px] text-slate-400 block mt-0.5">
+                  ID: {vendor.shopin_id} | Mode: {vendor.contact_mode || 'MIDDLEMAN'}
+                </span>
               </div>
-              <button 
-                onClick={() => handleApprove(vendor.id, vendor.full_name)}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded-xl transition cursor-pointer whitespace-nowrap shadow-xs"
-              >
-                Approve & Activate 🟢
-              </button>
+
+              {/* Action Buttons */}
+              <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                <button 
+                  onClick={() => handleApprove(vendor.id, vendor.full_name)}
+                  className="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded-xl transition cursor-pointer whitespace-nowrap shadow-xs text-center"
+                >
+                  Approve & Activate 🟢
+                </button>
+                <button 
+                  onClick={() => handleReject(vendor.id, vendor.full_name)}
+                  className="flex-1 sm:flex-none bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold px-3 py-2 rounded-xl transition cursor-pointer whitespace-nowrap text-center"
+                >
+                  Reject ✕
+                </button>
+              </div>
             </div>
           ))}
         </div>

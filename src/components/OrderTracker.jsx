@@ -69,67 +69,100 @@ export default function OrderTracker({ orderStatus = 'PENDING_CONFIRMATION', act
       </div>
 
       {/* ⚠️ ACTION REQUIRED BLOCK FOR BALANCE UP */}
-      {orderStatus === 'ACTION_REQUIRED' && (
-        <div className="mt-6 bg-amber-50 border-2 border-amber-300 rounded-2xl p-5 shadow-sm">
-          <div className="flex items-center gap-3 mb-4">
-            <span className="text-4xl animate-bounce">⚠️</span>
-            <div>
-              <h4 className="font-extrabold text-amber-900 text-sm">Action Required: Balance Needed</h4>
-              <p className="text-[11px] text-amber-800 font-medium leading-relaxed mt-0.5">
-                Market prices adjusted or custom items were updated. The revised order total is <strong className="text-amber-950 font-black text-xs bg-amber-200 px-1.5 py-0.5 rounded">₦{Number(activeOrder?.total_estimated_cost || 0).toLocaleString()}</strong>. Please transfer the balance so your shopper can proceed.
-              </p>
+      {/* ⚠️ ACTION REQUIRED BLOCK FOR BALANCE UP */}
+      {orderStatus === 'ACTION_REQUIRED' && (() => {
+        const revisedTotal = Number(activeOrder?.total_estimated_cost || activeOrder?.estimated_total || 7670);
+        const alreadyPaid = Number(activeOrder?.deposit_paid || activeOrder?.amount_paid || 0);
+        const balanceRemaining = Math.max(0, revisedTotal - alreadyPaid);
+
+        return (
+          <div className="mt-6 bg-amber-50 border-2 border-amber-300 rounded-2xl p-5 shadow-sm">
+            <div className="flex items-center gap-3 mb-4">
+              <span className="text-4xl animate-bounce">⚠️</span>
+              <div>
+                <h4 className="font-extrabold text-amber-900 text-sm">Action Required: Balance Needed</h4>
+                <p className="text-[11px] text-amber-800 font-medium leading-relaxed mt-0.5">
+                  Market prices adjusted or custom items were updated. Please transfer the remaining balance below so your shopper can proceed.
+                </p>
+              </div>
+            </div>
+
+            {/* 💰 ITEMIZED BALANCE BREAKDOWN */}
+            <div className="bg-amber-100/60 border border-amber-200 rounded-xl p-3 mb-3 text-xs space-y-1">
+              <div className="flex justify-between text-slate-700">
+                <span>Revised Total Cost:</span>
+                <span className="font-bold">₦{revisedTotal.toLocaleString()}</span>
+              </div>
+              {alreadyPaid > 0 && (
+                <div className="flex justify-between text-slate-600">
+                  <span>Initial Amount Paid:</span>
+                  <span className="font-semibold">- ₦{alreadyPaid.toLocaleString()}</span>
+                </div>
+              )}
+              <div className="flex justify-between text-amber-950 font-black border-t border-amber-200 pt-1.5 text-sm">
+                <span>Balance to Transfer:</span>
+                <span className="bg-amber-300 text-amber-950 px-2 py-0.5 rounded-md">
+                  ₦{(alreadyPaid > 0 ? balanceRemaining : revisedTotal).toLocaleString()}
+                </span>
+              </div>
+            </div>
+
+            {/* 🏦 BANK TRANSFER DETAILS */}
+            <div className="bg-white border border-amber-200 rounded-xl p-4">
+              <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">
+                Transfer Balance To:
+              </h4>
+              
+              <div className="flex justify-between items-center bg-slate-50 border border-slate-100 p-3 rounded-lg mb-2">
+                <div>
+                  <p className="text-[9px] text-slate-500 uppercase tracking-wider">Bank Name</p>
+                  <p className="font-bold text-slate-900 text-sm">OPay</p>
+                </div>
+              </div>
+
+              <div className="flex justify-between items-center bg-slate-50 border border-slate-100 p-3 rounded-lg mb-2">
+                <div>
+                  <p className="text-[9px] text-slate-500 uppercase tracking-wider">Account Name</p>
+                  <p className="font-bold text-slate-900 text-sm capitalize">Mahmood Fausiyat Ayobami</p>
+                </div>
+              </div>
+
+              <div className="flex justify-between items-center bg-slate-50 border border-slate-100 p-3 rounded-lg">
+                <div>
+                  <p className="text-[9px] text-slate-500 uppercase tracking-wider">Account Number</p>
+                  <p className="font-black text-slate-900 text-xl tracking-widest">8143086509</p>
+                </div>
+                <button 
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText('8143086509');
+                    alert("Account number copied to clipboard!");
+                  }}
+                  className="bg-emerald-100 hover:bg-emerald-200 text-emerald-800 font-bold px-4 py-2 rounded-lg text-xs transition cursor-pointer"
+                >
+                  Copy
+                </button>
+              </div>
+              
+              <div className="mt-3 text-center bg-amber-100/50 p-2.5 rounded-lg border border-amber-100">
+                <p className="text-[10px] text-amber-800 font-bold">
+                  📲 Send a WhatsApp message with your receipt to Admin after transferring so our shopper can instantly proceed!
+                </p>
+                <a 
+                  href={`https://wa.me/2349040161152?text=${encodeURIComponent(
+                    `Hello ShopIn Admin, I have paid the balance of ₦${(alreadyPaid > 0 ? balanceRemaining : revisedTotal).toLocaleString()} for order ${activeOrder?.order_code || ''}.`
+                  )}`}
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="inline-block mt-2 bg-amber-600 hover:bg-amber-700 text-white font-bold px-4 py-2 rounded-lg text-[10px] transition cursor-pointer"
+                >
+                  Message Admin Now ➔
+                </a>
+              </div>
             </div>
           </div>
-
-          <div className="bg-white border border-amber-200 rounded-xl p-4">
-            <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Transfer Balance To:</h4>
-            
-            <div className="flex justify-between items-center bg-slate-50 border border-slate-100 p-3 rounded-lg mb-2">
-              <div>
-                <p className="text-[9px] text-slate-500 uppercase tracking-wider">Bank Name</p>
-                <p className="font-bold text-slate-900 text-sm">OPay</p>
-              </div>
-            </div>
-
-            <div className="flex justify-between items-center bg-slate-50 border border-slate-100 p-3 rounded-lg mb-2">
-              <div>
-                <p className="text-[9px] text-slate-500 uppercase tracking-wider">Account Name</p>
-                <p className="font-bold text-slate-900 text-sm capitalize">Mahmood Fausiyat Ayobami</p>
-              </div>
-            </div>
-
-            <div className="flex justify-between items-center bg-slate-50 border border-slate-100 p-3 rounded-lg">
-              <div>
-                <p className="text-[9px] text-slate-500 uppercase tracking-wider">Account Number</p>
-                <p className="font-black text-slate-900 text-xl tracking-widest">8143086509</p>
-              </div>
-              <button 
-                onClick={() => {
-                  navigator.clipboard.writeText('8143086509');
-                  alert("Account number copied to clipboard!");
-                }}
-                className="bg-emerald-100 hover:bg-emerald-200 text-emerald-800 font-bold px-4 py-2 rounded-lg text-xs transition cursor-pointer"
-              >
-                Copy
-              </button>
-            </div>
-            
-            <div className="mt-3 text-center bg-amber-100/50 p-2.5 rounded-lg border border-amber-100">
-              <p className="text-[10px] text-amber-800 font-bold">
-                📲 Send a WhatsApp message with your receipt to Admin after transferring so our shopper can instantly proceed!
-              </p>
-              <a 
-                href="https://wa.me/2349040161152?text=Hello%20ShopIn%20Admin,%20I%20have%20paid%20the%20balance%20for%20my%20order." 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="inline-block mt-2 bg-amber-600 hover:bg-amber-700 text-white font-bold px-4 py-2 rounded-lg text-[10px] transition cursor-pointer"
-              >
-                Message Admin Now ➔
-              </a>
-            </div>
-          </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* 🌟 LEAVE A REVIEW SECTION */}
       {(orderStatus === 'DELIVERED' || orderStatus === 'COMPLETED') && !reviewSubmitted && (

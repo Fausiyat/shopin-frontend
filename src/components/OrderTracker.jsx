@@ -69,10 +69,19 @@ export default function OrderTracker({ orderStatus = 'PENDING_CONFIRMATION', act
       </div>
 
       {/* ⚠️ ACTION REQUIRED BLOCK FOR BALANCE UP */}
-      {/* ⚠️ ACTION REQUIRED BLOCK FOR BALANCE UP */}
       {orderStatus === 'ACTION_REQUIRED' && (() => {
-        const revisedTotal = Number(activeOrder?.total_estimated_cost || activeOrder?.estimated_total || 7670);
-        const alreadyPaid = Number(activeOrder?.deposit_paid || activeOrder?.amount_paid || 0);
+        const revisedTotal = Number(activeOrder?.total_estimated_cost || activeOrder?.estimated_total || 0);
+
+        // 🌟 Look for the initial deposit across all possible stored locations
+        const alreadyPaid = Number(
+          activeOrder?.deposit_paid ??
+          activeOrder?.amount_paid ??
+          activeOrder?.parsed_json?.deposit_paid ??
+          activeOrder?.parsed_json?.estimated_total ??
+          0
+        );
+
+        // Calculate only the difference needed
         const balanceRemaining = Math.max(0, revisedTotal - alreadyPaid);
 
         return (
@@ -88,20 +97,22 @@ export default function OrderTracker({ orderStatus = 'PENDING_CONFIRMATION', act
             </div>
 
             {/* 💰 ITEMIZED BALANCE BREAKDOWN */}
-            <div className="bg-amber-100/60 border border-amber-200 rounded-xl p-3 mb-3 text-xs space-y-1">
+            <div className="bg-amber-100/60 border border-amber-200 rounded-xl p-3.5 mb-3 text-xs space-y-1.5">
               <div className="flex justify-between text-slate-700">
                 <span>Revised Total Cost:</span>
                 <span className="font-bold">₦{revisedTotal.toLocaleString()}</span>
               </div>
+
               {alreadyPaid > 0 && (
                 <div className="flex justify-between text-slate-600">
                   <span>Initial Amount Paid:</span>
-                  <span className="font-semibold">- ₦{alreadyPaid.toLocaleString()}</span>
+                  <span className="font-semibold text-emerald-700">- ₦{alreadyPaid.toLocaleString()}</span>
                 </div>
               )}
-              <div className="flex justify-between text-amber-950 font-black border-t border-amber-200 pt-1.5 text-sm">
+
+              <div className="flex justify-between text-amber-950 font-black border-t border-amber-200 pt-2 text-sm">
                 <span>Balance to Transfer:</span>
-                <span className="bg-amber-300 text-amber-950 px-2 py-0.5 rounded-md">
+                <span className="bg-amber-300 text-amber-950 px-2.5 py-0.5 rounded-md font-mono">
                   ₦{(alreadyPaid > 0 ? balanceRemaining : revisedTotal).toLocaleString()}
                 </span>
               </div>

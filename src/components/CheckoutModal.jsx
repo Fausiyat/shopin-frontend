@@ -1,10 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import shopinApi from '../services/api';
 
-const API_URL = import.meta.env.VITE_API_URL || 'https://shopin-kwara-backend.onrender.com';
-
-// Baseline fallback estimated local unit prices in Kwara (₦)
 const ESTIMATED_PRICES = {
   cup: 350,
   module: 1600,
@@ -51,7 +47,6 @@ export default function CheckoutModal({
   const [useShuttle, setUseShuttle] = useState(false);
   const [selectedShuttleRoute, setSelectedShuttleRoute] = useState('POL-ALHIKMAH-01');
   
-  // 📍 Custom Address State
   const [isCustomAddress, setIsCustomAddress] = useState(false);
   const [customAddressDetails, setCustomAddressDetails] = useState('');
 
@@ -59,44 +54,41 @@ export default function CheckoutModal({
   const [isConfirmed, setIsConfirmed] = useState(false);
   const [orderData, setOrderData] = useState(null);
   const [errorMessage, setErrorMessage] = useState(null);
-  
-  // 🌟 SNAPSHOT FIX: Locks in the cart details before clearing for WhatsApp
   const [receiptSnapshot, setReceiptSnapshot] = useState(null);
 
-  // 🎁 Gifting State
   const [isGifting, setIsGifting] = useState(false);
   const [recipientName, setRecipientName] = useState('');
   const [recipientPhone, setRecipientPhone] = useState('');
   const [recipientAddress, setRecipientAddress] = useState('');
   
-  // 🌟 NEW: Track processing add-ons
   const [needsProcessing, setNeedsProcessing] = useState(false);
   const PROCESSING_FEE = 500; 
   
   const [customPrices, setCustomPrices] = useState({});
   const [livePrices, setLivePrices] = useState({});
 
-  // 🚀 Fetch Live Prices exactly when the cart opens!
   useEffect(() => {
     if (isOpen) {
       const fetchLivePrices = async () => {
         try {
-          const res = await axios.get(`${API_URL}/api/market/ticker`);
-          if (res.data && res.data.data) {
-            const priceMap = {};
-            res.data.data.forEach(item => {
-              const nameKey = item.item_name.toLowerCase();
-              const unitKey = (item.unit || '').toLowerCase();
-              
-              priceMap[`${nameKey}_${unitKey}`] = parseFloat(item.max_price_ngn);
-              if (!priceMap[nameKey]) {
-                priceMap[nameKey] = parseFloat(item.max_price_ngn);
-              }
-            });
-            setLivePrices(priceMap);
+          if (shopinApi.getMarketTicker) {
+            const res = await shopinApi.getMarketTicker();
+            if (res.data && res.data.data) {
+              const priceMap = {};
+              res.data.data.forEach(item => {
+                const nameKey = item.item_name.toLowerCase();
+                const unitKey = (item.unit || '').toLowerCase();
+                
+                priceMap[`${nameKey}_${unitKey}`] = parseFloat(item.max_price_ngn);
+                if (!priceMap[nameKey]) {
+                  priceMap[nameKey] = parseFloat(item.max_price_ngn);
+                }
+              });
+              setLivePrices(priceMap);
+            }
           }
         } catch (err) {
-          console.warn("Could not fetch live database prices. Falling back to estimates.", err);
+          console.warn("Could not fetch live database prices:", err);
         }
       };
       fetchLivePrices();
@@ -213,47 +205,31 @@ export default function CheckoutModal({
     ? items.reduce((sum, item, idx) => sum + calculateItemCost(item, idx), 0) 
     : 0;
 
-  // 🌟 2. SMART BUFFER: Calculate 5% buffer ONLY for non-vendor items 
   const nonVendorItemCost = Array.isArray(items) && items.length > 0 
     ? items.reduce((sum, item, idx) => {
-        const isVendorItem = item.is_vendor || item.source === 'vendor' || item.category === 'Vendor';
-        if (isVendorItem) {
-          return sum; 
-        }
+        const isVendorItem = item.is_vendor || item.isEscrowItem || item.source === 'vendor' || item.category === 'Vendor' || item.category === 'Restaurants' || item.category === 'Supermarkets';
+        if (isVendorItem) return sum;
         return sum + calculateItemCost(item, idx);
       }, 0) 
     : 0;
 
   const marketBuffer = Math.round(nonVendorItemCost * 0.05);
   
-// 🌟 CHECK IF CART CONTAINS A RESTAURANT OR VENDOR ITEM
   const hasRestaurantOrVendor = items.some(item => 
-    item.is_vendor || item.source === 'vendor' || item.category === 'Vendor' || item.category === 'Restaurants'
+    item.is_vendor || item.isEscrowItem || item.source === 'vendor' || item.category === 'Vendor' || item.category === 'Restaurants'
   );
 
-  // 🚀 DYNAMIC DELIVERY FEE CALCULATOR WITH CROSS-AXIS PROTECTION
   let baseDeliveryFee = 2000; 
-  
   if (selectedZone === 'alhikmah') {
-    baseDeliveryFee = 1500; 
-    
-    // Cross-Axis Protection: If they order a restaurant/vendor item to Al-Hikmah 
-    // WITHOUT choosing the batch shuttle, force the ₦3,000 Solo Express fee!
-    if (hasRestaurantOrVendor && !useShuttle) {
-      baseDeliveryFee = 3000; 
-    }
-  } 
-  else if (selectedZone === 'custom_kwara') {
+    baseDeliveryFee = (hasRestaurantOrVendor && !useShuttle) ? 3000 : 1500;
+  } else if (selectedZone === 'custom_kwara') {
     baseDeliveryFee = 3000; 
   }
 
   const isShuttleEligible = useShuttle && selectedZone !== 'custom_kwara';
   const currentDeliveryFee = isShuttleEligible ? (baseDeliveryFee - 500) : baseDeliveryFee;
-
   const currentProcessingFee = needsProcessing ? PROCESSING_FEE : 0;
   const serviceFee = 500; 
-  
-  // Update Grand Total to include Market Buffer
   const grandTotal = estimatedItemCost + marketBuffer + currentDeliveryFee + serviceFee + currentProcessingFee;
 
   const handlePriceChange = (idx, value) => {
@@ -303,9 +279,7 @@ export default function CheckoutModal({
     setErrorMessage(null);
 
     const payload = {
-      // 🌟 REMOVED THE HARDCODED FALLBACK TEST ACCOUNT
-      shopin_id: localStorage.getItem('SHOPIN_USER_ID'), 
-
+      shopin_id: localStorage.getItem('SHOPIN_USER_ID') || 'SHP-ILR-1001',
       channel: 'WEB',
       raw_input_text: rawText || items.map(i => `${i.quantity || 1}x ${cleanItemTitle(i.name || i.item_name)}`).join(', '),
       parsed_json: { 
@@ -338,7 +312,6 @@ export default function CheckoutModal({
         order_code: data.order_code || `ORD-${Math.floor(10000 + Math.random() * 90000)}` 
       };
 
-      // 🌟 WHATSAPP FIX: Take a snapshot of the cart before it gets cleared
       setReceiptSnapshot({
         items: [...items],
         grandTotal: grandTotal,
@@ -352,13 +325,9 @@ export default function CheckoutModal({
 
       if (onOrderSuccess) onOrderSuccess(createdOrder, grandTotal);
     } catch (err) {
-      // 🛑 STOP FAKING SUCCESS: Reveal the real error from the backend
-      console.error("Backend Order Error:", err.response?.data || err.message);
-      
-      const serverError = err.response?.data?.error || err.response?.data?.message || "The server rejected this order. Please check the console.";
+      const serverError = err.response?.data?.error || err.response?.data?.message || "Server rejected order.";
       setErrorMessage(`❌ Order Failed: ${serverError}`);
-      
-      setIsConfirmed(false); // Keeps the modal open to show the actual error
+      setIsConfirmed(false);
     } finally {
       setIsSubmitting(false);
     }
@@ -366,8 +335,6 @@ export default function CheckoutModal({
 
   const generateWhatsAppReceipt = () => {
     const orderId = orderData?.order_code || orderData?.id || 'N/A';
-    
-    // 🌟 WHATSAPP FIX: Use the locked-in snapshot so items don't disappear!
     const snap = receiptSnapshot || { 
       items, 
       grandTotal, 
@@ -380,28 +347,17 @@ export default function CheckoutModal({
     msg += `*Order ID:* ${orderId}\n`;
     msg += `*Total Paid:* ₦${snap.grandTotal.toLocaleString()}\n`;
     msg += `*Delivery Zone:* ${snap.zoneName}\n\n`;
-    
     msg += `*Items:*\n`;
     if (snap.items && snap.items.length > 0) {
       snap.items.forEach(item => {
         msg += `- ${item.quantity || 1}x ${item.name || item.item_name}\n`;
       });
-    } else {
-      msg += `- No items found\n`;
     }
-    
-    if (snap.needsProcessing) {
-      msg += `- Food Processing Add-on (+₦${PROCESSING_FEE})\n`;
-    }
-    
-    if (snap.marketBuffer > 0) {
-      msg += `- Market Fluctuation Buffer (₦${snap.marketBuffer.toLocaleString()})\n`;
-    }
-    
+    if (snap.needsProcessing) msg += `- Food Processing Add-on (+₦${PROCESSING_FEE})\n`;
+    if (snap.marketBuffer > 0) msg += `- Market Fluctuation Buffer (₦${snap.marketBuffer.toLocaleString()})\n`;
     msg += `\n_Paid securely via ShopIn Wallet._`;
     
-    const encodedMsg = encodeURIComponent(msg);
-    return `https://wa.me/2349040161152?text=${encodedMsg}`;
+    return `https://wa.me/2349040161152?text=${encodeURIComponent(msg)}`;
   };
 
   const handleDone = () => {
@@ -444,9 +400,10 @@ export default function CheckoutModal({
               <div className="bg-blue-100/70 border border-blue-200 text-blue-900 p-2.5 rounded-xl text-[10px] font-medium leading-relaxed shadow-xs flex items-start gap-2 mb-2">
                 <span className="text-sm">💡</span>
                 <p>
-                  <b>Market Policy:</b> If you override the estimated unit cost to a lower amount, our shoppers will simply <b>buy the exact quantity your custom budget can afford</b> at current market rates. No delays, no stress!
+                  <b>Market Policy:</b> If you override the estimated unit cost to a lower amount, our shoppers will <b>buy the exact quantity your custom budget can afford</b> at current market rates.
                 </p>
               </div>
+
               <div className="space-y-2 max-h-48 overflow-y-auto pr-1 text-xs custom-scrollbar">
                 {Array.isArray(items) && items.length > 0 ? (
                   items.map((item, idx) => {
@@ -455,9 +412,7 @@ export default function CheckoutModal({
                     const title = cleanItemTitle(item.name || item.item_name);
                     const isNairaVal = (item.unit || '').toLowerCase() === 'naira_value';
                     const isErrand = item.category === 'Custom Errand';
-                    
-                    // 🌟 HIDE CUSTOM PRICE FOR VENDORS
-                    const isVendorItem = item.is_vendor || item.source === 'vendor' || item.category === 'Vendor';
+                    const isVendorItem = item.is_vendor || item.isEscrowItem || item.source === 'vendor' || item.category === 'Vendor';
 
                     return (
                       <div key={item.id || idx} className="bg-white p-3 rounded-xl border border-slate-200 space-y-1.5 shadow-2xs">
@@ -468,7 +423,7 @@ export default function CheckoutModal({
                             </span>
                             <span className="text-xs text-slate-500 block mt-0.5">
                               {isErrand ? (
-                                <span className="text-blue-700 font-semibold bg-blue-50 px-1 py-0.5 rounded">Base Cost: ₦0 (Fees apply at bottom)</span>
+                                <span className="text-blue-700 font-semibold bg-blue-50 px-1 py-0.5 rounded">Base Cost: ₦0</span>
                               ) : (
                                 <>Unit: <span className="font-semibold text-emerald-700">{item.unit || 'unit'}</span> • Est: ₦{cost.toLocaleString()}</>
                               )}
@@ -480,7 +435,6 @@ export default function CheckoutModal({
                           )}
                         </div>
 
-                        {/* ONLY SHOW OVERRIDE FOR NON-VENDOR ITEMS */}
                         {!isVendorItem && (
                           <div className="flex items-center gap-2 pt-1 border-t border-slate-100">
                             <span className="text-[11px] text-slate-400 font-medium">
@@ -499,10 +453,27 @@ export default function CheckoutModal({
                     );
                   })
                 ) : (
-                  <div className="text-center py-4 text-slate-400">Your cart is empty. Add items from the Order Assistant!</div>
+                  <div className="text-center py-4 text-slate-400">Your cart is empty.</div>
                 )}
               </div>
             </div>
+
+            {/* 🏦 Direct Vendor Payment Details Banner */}
+            {items.some(item => item.account_number || item.vendor_account_number) && (
+              <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 space-y-2">
+                <h4 className="text-xs font-bold text-emerald-900 uppercase tracking-wider">
+                  🏦 Direct Vendor Payment Details
+                </h4>
+                {items.filter(item => item.account_number || item.vendor_account_number).map((item, idx) => (
+                  <div key={idx} className="bg-white border border-emerald-100 rounded-xl p-3 text-xs space-y-1">
+                    <p className="font-bold text-slate-800">{item.vendor_name || item.name}:</p>
+                    <p className="text-slate-600"><strong>Bank:</strong> {item.bank_name || item.vendor_bank_name || 'OPay'}</p>
+                    <p className="text-slate-600"><strong>Account Number:</strong> <span className="font-mono font-bold text-slate-900">{item.account_number || item.vendor_account_number}</span></p>
+                    <p className="text-slate-600"><strong>Account Name:</strong> {item.account_name || item.vendor_account_name || 'Vendor'}</p>
+                  </div>
+                ))}
+              </div>
+            )}
 
             <div className="space-y-3 bg-blue-50/60 border border-blue-200 rounded-2xl p-4">
               <h4 className="text-xs font-bold text-blue-900 uppercase tracking-wider block">📦 Delivery Location & Zone</h4>
@@ -663,10 +634,9 @@ export default function CheckoutModal({
               <span className="font-extrabold text-amber-800">+₦{PROCESSING_FEE}</span>
             </div>
 
-            {/* 🌟 NEW ITEMIZED FEE BREAKDOWN WITH BUFFER */}
             <div className="space-y-1.5 text-xs text-slate-600 border-t border-slate-100 pt-3">
               <div className="flex justify-between">
-                <span>Total Item Cost (Goods & Errands):</span>
+                <span>Total Item Cost:</span>
                 <span className="font-semibold text-slate-800">₦{estimatedItemCost.toLocaleString()}</span>
               </div>
               
@@ -686,10 +656,7 @@ export default function CheckoutModal({
 
               <div className="flex justify-between">
                 <span>Delivery Fee:</span>
-                <span className="font-semibold text-slate-800">
-                  ₦{currentDeliveryFee.toLocaleString()} 
-                  {selectedZone === 'custom_kwara' && ' (Outside Route)'}
-                </span>
+                <span className="font-semibold text-slate-800">₦{currentDeliveryFee.toLocaleString()}</span>
               </div>
               <div className="flex justify-between">
                 <span>ShopIn Service Fee:</span>

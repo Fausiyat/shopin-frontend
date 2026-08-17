@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import shopinApi from '../services/api';
 
-// 🌟 NEW: Define all your Service categories in one place!
 const SERVICE_CATEGORIES = [
   'AB&S Services',
   'Muaz-O-Botanicals', 
@@ -35,7 +33,8 @@ const getSampleProducts = () => [
   {
     id: 'v-prod-6', product_name: 'Jollof Rice & Chicken', category: 'Restaurants',
     price_ngn: 2500, stock_quantity: 50, image_url: 'images/jollof.JPG', is_verified: true, vendor_id: 'VND-ILR-REST',
-    vendor_name: 'Multiple Restaurants', location: 'Ilorin City', contact_mode: 'MIDDLEMAN', is_pickup_available: true
+    vendor_name: 'Multiple Restaurants', location: 'Ilorin City', contact_mode: 'MIDDLEMAN', is_pickup_available: true,
+    bank_name: 'OPay', account_number: '8143086509', account_name: 'ShopIn Food Hub'
   },
   {
     id: 'v-prod-8', product_name: 'Shoprite Fresh Bread', category: 'Supermarkets',
@@ -50,7 +49,6 @@ const getSampleProducts = () => [
 ];
 
 export default function VendorMarketplace({ marketFilter, searchTerm, onAddToCart, openCheckout }) {
-  
   const [unlockedPhones, setUnlockedPhones] = useState({});
   
   const handleUnlockContact = (vendorProd) => {
@@ -66,16 +64,17 @@ export default function VendorMarketplace({ marketFilter, searchTerm, onAddToCar
   const [products, setProducts] = useState(getSampleProducts());
   const [feedback, setFeedback] = useState(null);
 
-  const [locations, setLocations] = useState({ restaurants: ['Item 7', 'Aroma', 'Food 101', 'Captain Cook', 'K-Bakes'] });
-  const [selectedRestaurants, setSelectedRestaurants] = useState({});
-
-  const API_URL = import.meta.env.VITE_API_URL || 'https://shopin-kwara-backend.onrender.com';
-
   const [regFullName, setRegFullName] = useState('');
   const [regPhone, setRegPhone] = useState('');
   const [regEmail, setRegEmail] = useState('');
   const [regCategory, setRegCategory] = useState('Wearables');
-  const [regContactMode, setRegContactMode] = useState('MIDDLEMAN'); 
+  const [regContactMode, setRegContactMode] = useState('MIDDLEMAN');
+  const [regBankName, setRegBankName] = useState('');
+  const [regAccountNumber, setRegAccountNumber] = useState('');
+  const [regAccountName, setRegAccountName] = useState('');
+
+  const [locations, setLocations] = useState({ restaurants: ['Item 7', 'Aroma', 'Food 101', 'Captain Cook', 'K-Bakes'] });
+  const [selectedRestaurants, setSelectedRestaurants] = useState({});
 
   const [vendorShopinId, setVendorShopinId] = useState('VND-ILR-1001');
   const [productName, setProductName] = useState('');
@@ -87,6 +86,7 @@ export default function VendorMarketplace({ marketFilter, searchTerm, onAddToCar
   const [allowDirectContact, setAllowDirectContact] = useState(false);
   const [isPickupAvailable, setIsPickupAvailable] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
 
   useEffect(() => {
     if (marketFilter === 'MARKETS') setSelectedCategory('Local Markets');
@@ -98,16 +98,18 @@ export default function VendorMarketplace({ marketFilter, searchTerm, onAddToCar
   useEffect(() => {
     const fetchDynamicLocations = async () => {
       try {
-        const res = await axios.get(`${API_URL}/api/locations`);
-        if (res.data && res.data.restaurants) {
-          setLocations(res.data);
+        if (shopinApi.getLocations) {
+          const res = await shopinApi.getLocations();
+          if (res.data && res.data.restaurants) {
+            setLocations(res.data);
+          }
         }
       } catch (err) {
-        console.warn("Could not fetch locations, using fallbacks.");
+        console.warn("Could not fetch locations, using defaults.");
       }
     };
     fetchDynamicLocations();
-  }, [API_URL]);
+  }, []);
 
   useEffect(() => {
     const fetchCatalog = async () => {
@@ -119,7 +121,7 @@ export default function VendorMarketplace({ marketFilter, searchTerm, onAddToCar
           }
         }
       } catch (err) {
-        console.warn("Using sample catalog products due to fetch error:", err.message);
+        console.warn("Using sample catalog products:", err.message);
       }
     };
     fetchCatalog();
@@ -131,19 +133,58 @@ export default function VendorMarketplace({ marketFilter, searchTerm, onAddToCar
     setIsSubmitting(true);
     setFeedback(null);
 
-    const payload = { full_name: regFullName.trim(), phone_number: regPhone.trim(), email: regEmail.trim() || null, vendor_category: regCategory, contact_mode: regContactMode };
+    const payload = { 
+      full_name: regFullName.trim(), 
+      phone_number: regPhone.trim(), 
+      email: regEmail.trim() || null, 
+      vendor_category: regCategory, 
+      contact_mode: regContactMode,
+      bank_name: regBankName.trim() || null,
+      account_number: regAccountNumber.trim() || null,
+      account_name: regAccountName.trim() || null
+    };
 
     try {
       const res = await shopinApi.registerVendor(payload);
       setVendorShopinId(res.data.vendor_data?.shopin_id || `VND-ILR-${Math.floor(1000 + Math.random() * 9000)}`);
-      setFeedback({ type: 'success', text: `Vendor Registration Successful!` });
+      setFeedback({ type: 'success', text: 'Vendor Registration Successful!' });
       setActiveSubTab('list_product');
     } catch (err) {
       setVendorShopinId(`VND-ILR-${Math.floor(1000 + Math.random() * 9000)}`);
-      setFeedback({ type: 'success', text: `Vendor registered locally!` });
+      setFeedback({ type: 'success', text: 'Vendor registered locally!' });
       setActiveSubTab('list_product');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    const data = new FormData();
+    data.append('file', file);
+    data.append('upload_preset', 'ShopIn_preset');
+    data.append('cloud_name', 'ShopIn');
+
+    try {
+      const res = await fetch('https://api.cloudinary.com/v1_1/ShopIn/image/upload', {
+        method: 'POST',
+        body: data
+      });
+      const fileData = await res.json();
+      
+      if (fileData.secure_url) {
+        setImageUrl(fileData.secure_url);
+      } else {
+        alert('Upload failed: ' + (fileData.error?.message || 'Check preset settings'));
+      }
+    } catch (error) {
+      alert('Image upload failed. Please check your connection.');
+      console.error(error);
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -154,14 +195,19 @@ export default function VendorMarketplace({ marketFilter, searchTerm, onAddToCar
     setIsSubmitting(true);
     setFeedback(null);
 
-    // 🌟 SMART CHECK: If the selected category is in our Service list, treat it as a service!
     const isServiceCategory = SERVICE_CATEGORIES.includes(category);
 
     const payload = {
-      shopin_id: vendorShopinId.trim(), product_name: productName.trim(), category: category,
-      price_ngn: priceNgn ? parseFloat(priceNgn) : null, stock_quantity: parseInt(stockQty) || 1,
-      image_url: imageUrl.trim() || null, location: locationHub, service_type: isServiceCategory ? 'service' : 'product',
-      allow_direct_contact: allowDirectContact || isServiceCategory, is_pickup_available: isPickupAvailable
+      shopin_id: vendorShopinId.trim(), 
+      product_name: productName.trim(), 
+      category: category,
+      price_ngn: priceNgn ? parseFloat(priceNgn) : null, 
+      stock_quantity: parseInt(stockQty) || 1,
+      image_url: imageUrl.trim() || null, 
+      location: locationHub, 
+      service_type: isServiceCategory ? 'service' : 'product',
+      allow_direct_contact: allowDirectContact || isServiceCategory, 
+      is_pickup_available: isPickupAvailable
     };
 
     try {
@@ -170,7 +216,12 @@ export default function VendorMarketplace({ marketFilter, searchTerm, onAddToCar
       setFeedback({ type: 'success', text: `Success! "${productName}" is now live!` });
       resetListingForm();
     } catch (err) {
-      const fallbackProd = { ...payload, id: `v-prod-${Date.now()}`, is_verified: true, contact_mode: (allowDirectContact || isServiceCategory) ? 'DIRECT' : 'MIDDLEMAN' };
+      const fallbackProd = { 
+        ...payload, 
+        id: `v-prod-${Date.now()}`, 
+        is_verified: true, 
+        contact_mode: (allowDirectContact || isServiceCategory) ? 'DIRECT' : 'MIDDLEMAN' 
+      };
       setProducts(prev => [fallbackProd, ...prev]);
       setFeedback({ type: 'success', text: `Listed "${productName}" successfully!` });
       resetListingForm();
@@ -180,7 +231,10 @@ export default function VendorMarketplace({ marketFilter, searchTerm, onAddToCar
   };
 
   const resetListingForm = () => {
-    setProductName(''); setPriceNgn(''); setImageUrl(''); setActiveSubTab('browse');
+    setProductName(''); 
+    setPriceNgn(''); 
+    setImageUrl(''); 
+    setActiveSubTab('browse');
   };
 
   const handleBuyWithEscrow = (prod, isPickup = false) => {
@@ -200,9 +254,13 @@ export default function VendorMarketplace({ marketFilter, searchTerm, onAddToCar
       quantity: 1, 
       category: prod.category, 
       image_url: prod.image_url, 
-      isEscrowItem: true, 
+      isEscrowItem: true,
+      is_vendor: true,
       vendorId: prod.vendor_id,
       vendor_name: chosenRestaurant,
+      bank_name: prod.bank_name,
+      account_number: prod.account_number,
+      account_name: prod.account_name,
       is_pickup_only: isPickup, 
       vendor_fee: 200 
     };
@@ -210,26 +268,20 @@ export default function VendorMarketplace({ marketFilter, searchTerm, onAddToCar
     if (openCheckout) openCheckout();
   };
 
-  // 🌟 DYNAMIC FILTER TABS: Combines shopping categories with our new Service categories
   const filterTabs = ['All', 'Local Markets', 'Supermarkets', 'Restaurants', 'Foodstuff', 'Wearables', 'Electronics', ...SERVICE_CATEGORIES, 'Provisions'];
 
- const filteredProducts = products.filter(prod => {
-    // 🌟 Normalizes both strings (lowercases them and removes spaces/hyphens) so they always match
+  const filteredProducts = products.filter(prod => {
     const normalize = (str) => (str || '').replace(/[\s-]/g, '').toLowerCase();
-    
-    const matchesCategory = selectedCategory === 'All' || 
-      normalize(prod.category) === normalize(selectedCategory);
-
-    // 🌟 UPGRADE: Use the Home Search (searchTerm) OR the Marketplace Search (searchQuery)
+    const matchesCategory = selectedCategory === 'All' || normalize(prod.category) === normalize(selectedCategory);
     const activeSearch = searchQuery || searchTerm || '';
     
-    const matchesSearch = activeSearch === '' ||
-                          prod.product_name.toLowerCase().includes(activeSearch.toLowerCase()) ||
-                          prod.category.toLowerCase().includes(activeSearch.toLowerCase()) ||
-                          (prod.vendor_name && prod.vendor_name.toLowerCase().includes(activeSearch.toLowerCase())) ||
-                          (prod.location && prod.location.toLowerCase().includes(activeSearch.toLowerCase()));
-                          
-    return matchesCategory && matchesSearch;
+    return matchesCategory && (
+      activeSearch === '' ||
+      prod.product_name.toLowerCase().includes(activeSearch.toLowerCase()) ||
+      prod.category.toLowerCase().includes(activeSearch.toLowerCase()) ||
+      (prod.vendor_name && prod.vendor_name.toLowerCase().includes(activeSearch.toLowerCase())) ||
+      (prod.location && prod.location.toLowerCase().includes(activeSearch.toLowerCase()))
+    );
   });
 
   return (
@@ -258,7 +310,7 @@ export default function VendorMarketplace({ marketFilter, searchTerm, onAddToCar
         </div>
       )}
 
-      {/* SUB-TAB 1: Browse Marketplace */}
+      {/* SUB-TAB 1: Browse */}
       {activeSubTab === 'browse' && (
         <div className="space-y-4">
           <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
@@ -293,7 +345,7 @@ export default function VendorMarketplace({ marketFilter, searchTerm, onAddToCar
                       }`}>
                         {prod.category}
                       </span>
-                     {prod.contact_mode === 'DIRECT' || prod.service_type === 'service' || SERVICE_CATEGORIES.some(c => c.toLowerCase() === (prod.category || '').toLowerCase()) ? (
+                      {prod.contact_mode === 'DIRECT' || prod.service_type === 'service' || SERVICE_CATEGORIES.some(c => c.toLowerCase() === (prod.category || '').toLowerCase()) ? (
                         <span className="text-[10px] font-bold px-2 py-0.5 bg-purple-100 text-purple-800 rounded-full flex items-center gap-1">📞 Direct Phone</span>
                       ) : (
                         <span className="text-[10px] font-bold px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-full flex items-center gap-1">🛡️ Escrow (₦200)</span>
@@ -302,7 +354,6 @@ export default function VendorMarketplace({ marketFilter, searchTerm, onAddToCar
 
                     <h3 className="font-bold text-slate-900 text-base leading-snug">{prod.product_name}</h3>
 
-                    {/* ⭐ DYNAMIC RATING SYSTEM */}
                     <div className="flex items-center gap-1 mt-1 mb-1">
                       {prod.rating > 0 ? (
                         <>
@@ -322,8 +373,9 @@ export default function VendorMarketplace({ marketFilter, searchTerm, onAddToCar
                     
                     {prod.category === 'Restaurants' ? (
                       <div className="mt-2 mb-1">
-                        <label className="text-[10px] font-bold text-slate-500 uppercase">Select Restaurant:</label>
+                        <label htmlFor={`res-select-${prod.id}`} className="text-[10px] font-bold text-slate-500 uppercase">Select Restaurant:</label>
                         <select
+                          id={`res-select-${prod.id}`}
                           value={selectedRestaurants[prod.id] || locations.restaurants[0] || 'Item 7'}
                           onChange={(e) => setSelectedRestaurants({ ...selectedRestaurants, [prod.id]: e.target.value })}
                           className="w-full mt-1 p-1.5 border border-amber-200 rounded-lg text-xs bg-amber-50 text-amber-900 font-bold outline-none"
@@ -335,11 +387,17 @@ export default function VendorMarketplace({ marketFilter, searchTerm, onAddToCar
                       <>
                         <p className="text-xs text-slate-500 mt-1 font-medium flex items-center gap-1"><span>📍</span> {prod.location || 'Ilorin Hub'}</p>
                         {prod.vendor_name && <p className="text-[10px] font-bold text-teal-700 mt-1">Vendor: {prod.vendor_name}</p>}
+                        {prod.account_number && (
+                          <div className="mt-2 bg-slate-50 border border-slate-200 rounded-lg p-2 text-[10px] space-y-0.5">
+                            <span className="font-bold text-slate-700 block uppercase tracking-wider">🏦 Vendor Bank Details:</span>
+                            <p className="text-slate-600"><strong>Bank:</strong> {prod.bank_name}</p>
+                            <p className="text-slate-600"><strong>Acct:</strong> <span className="font-mono font-bold text-slate-900">{prod.account_number}</span> ({prod.account_name})</p>
+                          </div>
+                        )}
                       </>
                     )}
                   </div>
 
-                  {/* 🌟 SMART BUTTON RENDERER: If it's in our Service Categories list, show the purple button! */}
                   {SERVICE_CATEGORIES.includes(prod.category) || prod.contact_mode === 'DIRECT' || prod.service_type === 'service' ? (
                     <div className="pt-3 border-t border-slate-100 space-y-2">
                       <div className="text-xs text-slate-600">
@@ -390,57 +448,191 @@ export default function VendorMarketplace({ marketFilter, searchTerm, onAddToCar
         </div>
       )}
 
-      {/* SUB-TAB 2: Vendor Registration Form */}
+      {/* SUB-TAB 2: Register Vendor */}
       {activeSubTab === 'register_vendor' && (
         <form onSubmit={handleRegisterVendor} className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs max-w-lg mx-auto space-y-4">
-          <h3 className="font-extrabold text-slate-900 text-base border-b border-slate-100 pb-2">Register as a ShopIn Verified Vendor</h3>
-          <div><label className="text-xs font-semibold text-slate-600 block mb-1">Full Name / Business Name</label><input type="text" value={regFullName} onChange={(e) => setRegFullName(e.target.value)} required className="w-full p-2.5 border rounded-xl text-xs" /></div>
-          <div className="grid grid-cols-2 gap-3">
-            <div><label className="text-xs font-semibold text-slate-600 block mb-1">Phone Number</label><input type="tel" value={regPhone} onChange={(e) => setRegPhone(e.target.value)} required className="w-full p-2.5 border rounded-xl text-xs" /></div>
-            <div><label className="text-xs font-semibold text-slate-600 block mb-1">Email (Optional)</label><input type="email" value={regEmail} onChange={(e) => setRegEmail(e.target.value)} className="w-full p-2.5 border rounded-xl text-xs" /></div>
-          </div>
+          <h3 className="font-extrabold text-slate-900 text-base border-b border-slate-100 pb-2">
+            Register as a ShopIn Verified Vendor
+          </h3>
+
           <div>
-            <label className="text-xs font-semibold text-slate-600 block mb-1">Vendor Category</label>
-            <select value={regCategory} onChange={(e) => setRegCategory(e.target.value)} className="w-full p-2.5 border rounded-xl text-xs bg-white font-medium">
+            <label htmlFor="reg-fullname" className="text-xs font-semibold text-slate-600 block mb-1">
+              Full Name / Business Name *
+            </label>
+            <input 
+              id="reg-fullname" 
+              type="text" 
+              value={regFullName} 
+              onChange={(e) => setRegFullName(e.target.value)} 
+              required 
+              placeholder="e.g. Iya Basira Foods"
+              className="w-full p-2.5 border border-slate-300 rounded-xl text-xs bg-white outline-none focus:ring-2 focus:ring-teal-500" 
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label htmlFor="reg-phone" className="text-xs font-semibold text-slate-600 block mb-1">
+                Phone Number *
+              </label>
+              <input 
+                id="reg-phone" 
+                type="tel" 
+                value={regPhone} 
+                onChange={(e) => setRegPhone(e.target.value)} 
+                required 
+                placeholder="08123456789"
+                className="w-full p-2.5 border border-slate-300 rounded-xl text-xs bg-white outline-none focus:ring-2 focus:ring-teal-500" 
+              />
+            </div>
+            <div>
+              <label htmlFor="reg-email" className="text-xs font-semibold text-slate-600 block mb-1">
+                Email (Optional)
+              </label>
+              <input 
+                id="reg-email" 
+                type="email" 
+                value={regEmail} 
+                onChange={(e) => setRegEmail(e.target.value)} 
+                placeholder="vendor@example.com"
+                className="w-full p-2.5 border border-slate-300 rounded-xl text-xs bg-white outline-none focus:ring-2 focus:ring-teal-500" 
+              />
+            </div>
+          </div>
+
+          <div>
+            <label htmlFor="reg-cat-select" className="text-xs font-semibold text-slate-600 block mb-1">
+              Vendor Category *
+            </label>
+            <select 
+              id="reg-cat-select" 
+              value={regCategory} 
+              onChange={(e) => setRegCategory(e.target.value)} 
+              className="w-full p-2.5 border border-slate-300 rounded-xl text-xs bg-white font-medium outline-none focus:ring-2 focus:ring-teal-500"
+            >
               <option value="Restaurants">Restaurants & Bukas</option>
               <option value="Supermarkets">Supermarkets</option>
               <option value="Local Markets">Local Markets</option>
               <option value="Wearables">Wearables</option>
               <option value="Electronics">Electronics</option>
-              {/* 🌟 Automatically populate dropdown with all our Service Categories! */}
               {SERVICE_CATEGORIES.map(cat => <option key={cat} value={cat}>{cat}</option>)}
             </select>
           </div>
-          <button type="submit" disabled={isSubmitting} className="w-full bg-teal-700 text-white font-bold py-3.5 rounded-xl text-xs">Register as Vendor ➔</button>
+
+          {/* 🏦 Optional Payout Details */}
+          <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-3">
+            <p className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">
+              🏦 Payout / Direct Payment Details (Optional)
+            </p>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label htmlFor="reg-bank-name" className="text-xs font-semibold text-slate-600 block mb-1">
+                  Bank Name
+                </label>
+                <input 
+                  id="reg-bank-name" 
+                  type="text" 
+                  placeholder="e.g. OPay, GTBank, Kuda" 
+                  value={regBankName} 
+                  onChange={(e) => setRegBankName(e.target.value)} 
+                  className="w-full p-2.5 border rounded-xl text-xs bg-white outline-none focus:ring-2 focus:ring-teal-500" 
+                />
+              </div>
+              <div>
+                <label htmlFor="reg-account-number" className="text-xs font-semibold text-slate-600 block mb-1">
+                  Account Number
+                </label>
+                <input 
+                  id="reg-account-number" 
+                  type="text" 
+                  maxLength="10"
+                  placeholder="10-digit number" 
+                  value={regAccountNumber} 
+                  onChange={(e) => setRegAccountNumber(e.target.value)} 
+                  className="w-full p-2.5 border rounded-xl text-xs bg-white font-mono outline-none focus:ring-2 focus:ring-teal-500" 
+                />
+              </div>
+            </div>
+
+            <div>
+              <label htmlFor="reg-account-name" className="text-xs font-semibold text-slate-600 block mb-1">
+                Account Name
+              </label>
+              <input 
+                id="reg-account-name" 
+                type="text" 
+                placeholder="Name as registered on bank account" 
+                value={regAccountName} 
+                onChange={(e) => setRegAccountName(e.target.value)} 
+                className="w-full p-2.5 border rounded-xl text-xs bg-white outline-none focus:ring-2 focus:ring-teal-500" 
+              />
+            </div>
+          </div>
+
+          <button 
+            type="submit" 
+            disabled={isSubmitting} 
+            className="w-full bg-teal-700 hover:bg-teal-800 disabled:bg-slate-400 text-white font-bold py-3.5 rounded-xl text-xs cursor-pointer transition shadow-sm"
+          >
+            {isSubmitting ? 'Registering...' : 'Register as Vendor ➔'}
+          </button>
         </form>
       )}
 
-      {/* SUB-TAB 3: List Product Form */}
+      {/* SUB-TAB 3: List Item */}
       {activeSubTab === 'list_product' && (
         <form onSubmit={handleListProduct} className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs max-w-lg mx-auto space-y-4">
           <h3 className="font-extrabold text-slate-900 text-base border-b border-slate-100 pb-2">List Item or Service</h3>
           <div className="grid grid-cols-2 gap-3">
-            <div><label className="text-xs font-semibold text-slate-600 block mb-1">Vendor ShopIn ID</label><input type="text" value={vendorShopinId} onChange={(e) => setVendorShopinId(e.target.value)} required className="w-full p-2.5 border rounded-xl text-xs font-bold" /></div>
+            <div><label htmlFor="list-shopin-id" className="text-xs font-semibold text-slate-600 block mb-1">Vendor ShopIn ID</label><input id="list-shopin-id" type="text" value={vendorShopinId} onChange={(e) => setVendorShopinId(e.target.value)} required className="w-full p-2.5 border rounded-xl text-xs font-bold" /></div>
             <div>
-              <label className="text-xs font-semibold text-slate-600 block mb-1">Category</label>
-              <select value={category} onChange={(e) => setCategory(e.target.value)} className="w-full p-2.5 border rounded-xl text-xs bg-white font-medium">
+              <label htmlFor="list-cat-select" className="text-xs font-semibold text-slate-600 block mb-1">Category</label>
+              <select id="list-cat-select" value={category} onChange={(e) => setCategory(e.target.value)} className="w-full p-2.5 border rounded-xl text-xs bg-white font-medium">
                 <option value="Restaurants">Restaurants & Meals</option>
                 <option value="Supermarkets">Supermarket Items</option>
                 <option value="Local Markets">Local Market Goods</option>
                 <option value="Wearables">Wearables</option>
                 <option value="Electronics">Electronics</option>
-                {/* 🌟 Automatically populate dropdown with all our Service Categories! */}
                 {SERVICE_CATEGORIES.map(cat => <option key={cat} value={cat}>{cat}</option>)}
               </select>
             </div>
           </div>
-          <div><label className="text-xs font-semibold text-slate-600 block mb-1">Item / Service Name</label><input type="text" value={productName} onChange={(e) => setProductName(e.target.value)} required className="w-full p-2.5 border rounded-xl text-xs" /></div>
-          <div><label className="text-xs font-semibold text-slate-600 block mb-1">Image URL (Optional)</label><input type="url" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} className="w-full p-2.5 border rounded-xl text-xs" /></div>
-          <div className="grid grid-cols-2 gap-3">
-            <div><label className="text-xs font-semibold text-slate-600 block mb-1">Price (₦ NGN)</label><input type="number" value={priceNgn} onChange={(e) => setPriceNgn(e.target.value)} placeholder="Blank = Negotiable" className="w-full p-2.5 border rounded-xl text-xs" /></div>
-            <div><label className="text-xs font-semibold text-slate-600 block mb-1">Location / Market Hub</label><input type="text" value={locationHub} onChange={(e) => setLocationHub(e.target.value)} className="w-full p-2.5 border rounded-xl text-xs" /></div>
+          <div><label htmlFor="list-prod-name" className="text-xs font-semibold text-slate-600 block mb-1">Item / Service Name</label><input id="list-prod-name" type="text" value={productName} onChange={(e) => setProductName(e.target.value)} required className="w-full p-2.5 border rounded-xl text-xs" /></div>
+          
+          <div>
+            <label htmlFor="product-photo-upload" className="text-xs font-semibold text-slate-600 block mb-1">Product Photo</label>
+            <div className="flex items-center gap-3">
+              <label 
+                htmlFor="product-photo-upload" 
+                className="flex-1 bg-slate-50 border border-dashed border-slate-300 text-slate-700 hover:bg-slate-100 text-xs font-bold py-3 px-4 rounded-xl cursor-pointer text-center transition"
+              >
+                {isUploading ? '⏳ Uploading Photo...' : '📷 Choose Photo / Snap Picture'}
+                <input
+                  id="product-photo-upload"
+                  type="file"
+                  accept="image/*"
+                  disabled={isUploading}
+                  onChange={handleImageUpload}
+                  className="hidden"
+                />
+              </label>
+
+              {imageUrl && (
+                <div className="w-12 h-12 rounded-xl overflow-hidden border border-slate-200 shrink-0">
+                  <img src={imageUrl} alt="Preview" className="w-full h-full object-cover" />
+                </div>
+              )}
+            </div>
           </div>
-          <button type="submit" disabled={isSubmitting} className="w-full bg-teal-700 text-white font-bold py-3.5 rounded-xl text-xs">Publish Listing 🔒</button>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div><label htmlFor="list-price" className="text-xs font-semibold text-slate-600 block mb-1">Price (₦ NGN)</label><input id="list-price" type="number" value={priceNgn} onChange={(e) => setPriceNgn(e.target.value)} placeholder="Blank = Negotiable" className="w-full p-2.5 border rounded-xl text-xs" /></div>
+            <div><label htmlFor="list-loc" className="text-xs font-semibold text-slate-600 block mb-1">Location / Market Hub</label><input id="list-loc" type="text" value={locationHub} onChange={(e) => setLocationHub(e.target.value)} className="w-full p-2.5 border rounded-xl text-xs" /></div>
+          </div>
+          <button type="submit" disabled={isSubmitting || isUploading} className="w-full bg-teal-700 text-white font-bold py-3.5 rounded-xl text-xs cursor-pointer">
+            {isSubmitting ? 'Publishing...' : 'Publish Listing 🔒'}
+          </button>
         </form>
       )}
     </div>

@@ -76,6 +76,7 @@ export default function OrderTracker({ orderStatus = 'PENDING_CONFIRMATION', act
         const alreadyPaid = Number(
           activeOrder?.deposit_paid ??
           activeOrder?.amount_paid ??
+          activeOrder?.paid_amount ??
           activeOrder?.parsed_json?.deposit_paid ??
           activeOrder?.parsed_json?.estimated_total ??
           0

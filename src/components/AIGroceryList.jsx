@@ -8,73 +8,46 @@ export default function AIGroceryList({ onAddToCart, openCheckout }) {
   const [error, setError] = useState(null);
   const [parsedResult, setParsedResult] = useState(null);
 
-  // 🌟 UPGRADED: Smart extractor for Naira budgets, metric weights, and Ilorin market measures
+  // 🌟 SMART PARSER: Extracts Custom Prices, Quantities, and Cleans the Item Name
   const sanitizeItemAndExtractQty = (rawName, originalQty, originalUnit) => {
-    if (!rawName) return { cleanName: '', qty: originalQty || 1, unit: originalUnit || 'unit' };
+    if (!rawName) return { cleanName: '', qty: originalQty || 1, unit: originalUnit || 'unit', customPrice: '' };
     let clean = rawName.trim();
 
     let extractedQty = originalQty || 1;
-    let extractedUnit = originalUnit && originalUnit !== 'unit' ? originalUnit : null;
+    let extractedUnit = originalUnit && originalUnit !== 'unit' ? originalUnit : 'unit';
+    let customPrice = '';
 
     // 1. Detect Naira Budgets (e.g. "500 Naira Tomatoes", "₦300 Ewedu")
-    const nairaMatch = clean.match(/(?:₦|N|NGN)?\s*(\d+)\s*(?:naira|kobo|ngn)\s*(?:of|worth\s*of)?\s*(.*)/i) 
-                    || clean.match(/(?:₦|N)\s*(\d+)\s*(?:of|worth\s*of)?\s*(.*)/i);
-    
-    if (nairaMatch) {
-      extractedQty = parseInt(nairaMatch[1], 10);
-      extractedUnit = 'naira_value';
-      clean = nairaMatch[2];
+    const nairaRegex1 = /(?:₦|N|NGN)?\s*(\d+)\s*(?:naira|kobo|ngn)\s*(?:of|worth\s*of)?\s*(.*)/i;
+    const nairaRegex2 = /(?:₦|N)\s*(\d+)\s*(?:of|worth\s*of)?\s*(.*)/i;
+
+    let nMatch = clean.match(nairaRegex1);
+    if (nMatch) {
+      customPrice = parseInt(nMatch[1], 10);
+      clean = nMatch[2];
+      extractedQty = 1;
     } else {
-      // 2. Detect Specific Units & Weights
-      const unitRules = [
-        { regex: /^(\d+(?:\.\d+)?)\s*(?:kg|kilogram|kilos?)\s*(?:of)?\s*(.*)/i, unit: 'kg' },
-        { regex: /^(?:1\/2|0\.5)\s*(?:kg|kilogram)\s*(?:of)?\s*(.*)/i, qty: 1, unit: '1/2kg' },
-        { regex: /^(\d+)\s*(?:paint(?:\s*rubber)?|rubber)\s*(?:of)?\s*(.*)/i, unit: 'paint_rubber' },
-        { regex: /^(\d+)\s*(?:mudu|module|congo)\s*(?:of)?\s*(.*)/i, unit: 'module' },
-        { regex: /^(\d+)\s*(?:tuber|tubers)\s*(?:of)?\s*(.*)/i, unit: 'tuber' },
-        { regex: /^(\d+)\s*(?:crate|crates)\s*(?:of)?\s*(.*)/i, unit: 'crate' },
-        { regex: /^(\d+)\s*(?:pack|packs|pkt)\s*(?:of)?\s*(.*)/i, unit: 'pack' },
-        { regex: /^(\d+)\s*(?:carton|cartons|ctn)\s*(?:of)?\s*(.*)/i, unit: 'carton' },
-        { regex: /^(\d+)\s*(?:keg|kegs|25l|25\s*litres?)\s*(?:of)?\s*(.*)/i, unit: '25_litres' },
-        { regex: /^(\d+)\s*(?:5l|5\s*litres?)\s*(?:of)?\s*(.*)/i, unit: '5_litres' },
-        { regex: /^(\d+)\s*(?:bottle|bottles|75cl)\s*(?:of)?\s*(.*)/i, unit: '75cl' },
-        { regex: /^(\d+)\s*(?:roll|rolls)\s*(?:of)?\s*(.*)/i, unit: 'roll' },
-        { regex: /^(\d+)\s*(?:refill|refills)\s*(?:of)?\s*(.*)/i, unit: 'refill' },
-        { regex: /^(\d+)\s*(?:basket|baskets)\s*(?:of)?\s*(.*)/i, unit: 'basket' },
-        { regex: /^(\d+)\s*(?:pieces?|pcs?)\s*(?:of)?\s*(.*)/i, unit: 'pieces' },
-        { regex: /^(\d+)\s*(?:cup|cups|tin|tins)\s*(?:of)?\s*(.*)/i, unit: 'cup' },
-        { regex: /^(\d+)\s*(?:x|X)\s*(.*)/i, unit: 'unit' },
-        { regex: /^(\d+)\s+(.*)/i, unit: 'unit' }
-      ];
-
-      let matched = false;
-      for (const rule of unitRules) {
-        const match = clean.match(rule.regex);
-        if (match) {
-          extractedQty = rule.qty !== undefined ? rule.qty : parseFloat(match[1]);
-          extractedUnit = rule.unit;
-          clean = match[2];
-          matched = true;
-          break;
-        }
-      }
-
-      if (!matched) {
-        const leadingNumberMatch = clean.match(/^(\d+)\s*(?:x|X)?\s*(.*)/i);
-        if (leadingNumberMatch) {
-          extractedQty = parseInt(leadingNumberMatch[1], 10);
-          clean = leadingNumberMatch[2];
-        }
+      nMatch = clean.match(nairaRegex2);
+      if (nMatch) {
+        customPrice = parseInt(nMatch[1], 10);
+        clean = nMatch[2];
+        extractedQty = 1;
       }
     }
 
-    // 3. Remove measurement words and modifiers
+    // 2. Extract leading numbers for quantity (e.g. "2 Paint Garri")
+    const leadingNumberMatch = clean.match(/^(\d+)\s*(?:x|X)?\s*(.*)/i);
+    if (leadingNumberMatch) {
+      extractedQty = parseInt(leadingNumberMatch[1], 10);
+      clean = leadingNumberMatch[2];
+    }
+
+    // 3. Remove measurement words and modifiers from the title
     const unitWords = [
       'paint rubber', 'paint', 'rubber', 'tuber', 'tubers', 'mudu', 'module', 'congo',
       'cup', 'tin', 'tins', 'bag', 'bags', 'kg', 'unit', 'units', 'pieces', 'piece',
       'crate', 'crates', 'keg', 'kegs', 'litres', 'liter', 'liters', 'l', 'cl',
-      'pack', 'packs', 'carton', 'cartons', 'basket', 'sachet', 'sachets', 'refilled',
-      'naira', 'kobo', 'ngn'
+      'pack', 'packs', 'carton', 'cartons', 'basket', 'sachet', 'sachets', 'refilled'
     ];
     
     unitWords.forEach(word => {
@@ -89,21 +62,23 @@ export default function AIGroceryList({ onAddToCart, openCheckout }) {
       .replace(/\s+/g, ' ')
       .trim();
 
+    clean = clean ? (clean.charAt(0).toUpperCase() + clean.slice(1)) : rawName;
+
     return {
-      cleanName: clean || rawName,
+      cleanName: clean,
       qty: extractedQty,
-      unit: extractedUnit || 'unit'
+      unit: extractedUnit,
+      customPrice: customPrice || ''
     };
   };
 
-  // Presets for Grocery Mode
+  // Presets
   const groceryPresets = [
     "2 paint rubber garri ijebu and 5 tubers of yam",
     "2 packs of Dangote Spaghetti, 1 keg of Power Oil, and 1 crate of eggs",
     "500 naira tomatoes, 300 naira ewedu, and 1kg chicken"
   ];
 
-  // Presets for Custom Errand Mode
   const errandPresets = [
     "Buy 2 bags of specialized fish feed from Challenge and deliver to Tanke",
     "Pick up document package at Post Office and bring to Taiwo Road",
@@ -124,13 +99,12 @@ export default function AIGroceryList({ onAddToCart, openCheckout }) {
 
       const response = await shopinApi.parseGroceryList(queryText);
       const data = response.data;
-
       const rawItemsList = data.parsed_data?.items || data.items || [];
 
-      // 🌟 UPGRADED: Clean item titles, units, and quantities automatically
+      // Clean item titles and extract prices
       let cleanedItemsList = rawItemsList.map((item, idx) => {
         const rawTitle = item.item_name || item.name || '';
-        const { cleanName, qty, unit } = sanitizeItemAndExtractQty(rawTitle, item.quantity, item.unit);
+        const { cleanName, qty, unit, customPrice } = sanitizeItemAndExtractQty(rawTitle, item.quantity, item.unit);
 
         return {
           ...item,
@@ -139,11 +113,12 @@ export default function AIGroceryList({ onAddToCart, openCheckout }) {
           brand_or_variant: item.brand_or_variant || item.brand || '',
           quantity: Math.max(1, qty),
           unit: unit,
-          category: item.category || (mode === 'errand' ? 'Custom Errand' : (unit === 'naira_value' ? 'Produce' : 'General Foodstuff'))
+          custom_price: item.custom_price || customPrice || '',
+          category: item.category || (mode === 'errand' ? 'Custom Errand' : 'General Foodstuff')
         };
       });
 
-      // 🌟 THE BULLETPROOF ERRAND FALLBACK
+      // Errand fallback
       if (mode === 'errand' && cleanedItemsList.length === 0) {
         cleanedItemsList = [{
           id: `errand_${Date.now()}`,
@@ -151,6 +126,7 @@ export default function AIGroceryList({ onAddToCart, openCheckout }) {
           brand_or_variant: 'Custom Dispatch',
           quantity: 1,
           unit: 'unit',
+          custom_price: '',
           category: 'Custom Errand'
         }];
       }
@@ -166,8 +142,6 @@ export default function AIGroceryList({ onAddToCart, openCheckout }) {
       }
     } catch (err) {
       console.error("Parsing Error:", err);
-      
-      // 🌟 SECONDARY FALLBACK
       if (mode === 'errand') {
         setParsedResult({
           items: [{
@@ -176,6 +150,7 @@ export default function AIGroceryList({ onAddToCart, openCheckout }) {
             brand_or_variant: 'Custom Dispatch',
             quantity: 1,
             unit: 'unit',
+            custom_price: '',
             category: 'Custom Errand'
           }],
           is_service_request: true
@@ -197,6 +172,7 @@ export default function AIGroceryList({ onAddToCart, openCheckout }) {
       brand_or_variant: '',
       quantity: 1,
       unit: 'unit',
+      custom_price: '',
       category: mode === 'errand' ? 'Custom Errand' : 'General Foodstuff'
     };
     setParsedResult({
@@ -205,36 +181,23 @@ export default function AIGroceryList({ onAddToCart, openCheckout }) {
     });
   };
 
-const handleProceedToCheckout = () => {
+  const handleProceedToCheckout = () => {
     if (parsedResult?.items && parsedResult.items.length > 0) {
-      const normalizedItems = parsedResult.items.map((item) => {
-        // 🌟 If it's a Naira budget, we lock it in as an override price for the checkout modal
-        const isNairaBudget = item.unit === 'naira_value';
-        
-        return {
-          ...item,
-          name: item.item_name || item.name || 'Grocery Item',
-          item_name: item.item_name || item.name || 'Grocery Item',
-          brand_or_variant: item.brand_or_variant || item.brand || '',
-          
-          // If it's a budget, set qty to 1. Otherwise, use the actual quantity.
-          quantity: isNairaBudget ? 1 : Math.max(1, Number(item.quantity) || 1),
-          unit: isNairaBudget ? 'budget' : (item.unit || 'unit'),
-          
-          // 💰 This automatically pre-fills your "Custom Unit Cost (₦)" box in checkout!
-          price: isNairaBudget ? Number(item.quantity) : undefined, 
-          custom_price: isNairaBudget ? Number(item.quantity) : undefined, 
-          
-          is_service_request: parsedResult.is_service_request || false
-        };
-      });
+      const normalizedItems = parsedResult.items.map((item) => ({
+        ...item,
+        name: item.item_name || item.name || 'Grocery Item',
+        item_name: item.item_name || item.name || 'Grocery Item',
+        brand_or_variant: item.brand_or_variant || item.brand || '',
+        quantity: Math.max(1, Number(item.quantity) || 1),
+        unit: item.unit || 'unit',
+        // 💰 Automatically inject custom price overrides into the cart!
+        price: item.custom_price ? Number(item.custom_price) : undefined,
+        custom_price: item.custom_price ? Number(item.custom_price) : undefined,
+        is_service_request: parsedResult.is_service_request || false
+      }));
 
-      if (onAddToCart) {
-        onAddToCart(normalizedItems);
-      }
-      if (openCheckout) {
-        openCheckout();
-      }
+      if (onAddToCart) onAddToCart(normalizedItems);
+      if (openCheckout) openCheckout();
     }
   };
 
@@ -243,29 +206,17 @@ const handleProceedToCheckout = () => {
       {/* Mode Selector Toggle */}
       <div className="flex bg-slate-100 p-1 rounded-xl text-xs font-semibold">
         <button
-          onClick={() => {
-            setMode('grocery');
-            setInputText('');
-            setParsedResult(null);
-          }}
+          onClick={() => { setMode('grocery'); setInputText(''); setParsedResult(null); }}
           className={`flex-1 py-2 rounded-lg transition-all cursor-pointer ${
-            mode === 'grocery' 
-              ? 'bg-white text-emerald-800 shadow-xs font-bold' 
-              : 'text-slate-600 hover:text-slate-900'
+            mode === 'grocery' ? 'bg-white text-emerald-800 shadow-xs font-bold' : 'text-slate-600 hover:text-slate-900'
           }`}
         >
           🛒 Standard Grocery List
         </button>
         <button
-          onClick={() => {
-            setMode('errand');
-            setInputText('');
-            setParsedResult(null);
-          }}
+          onClick={() => { setMode('errand'); setInputText(''); setParsedResult(null); }}
           className={`flex-1 py-2 rounded-lg transition-all cursor-pointer ${
-            mode === 'errand' 
-              ? 'bg-white text-blue-800 shadow-xs font-bold' 
-              : 'text-slate-600 hover:text-slate-900'
+            mode === 'errand' ? 'bg-white text-blue-800 shadow-xs font-bold' : 'text-slate-600 hover:text-slate-900'
           }`}
         >
           🚚 Custom Errand / Special Request
@@ -281,14 +232,9 @@ const handleProceedToCheckout = () => {
           {currentPresets.map((preset, idx) => (
             <button
               key={idx}
-              onClick={() => {
-                setInputText(preset);
-                setError(null);
-              }}
+              onClick={() => { setInputText(preset); setError(null); }}
               className={`text-xs border px-3 py-1.5 rounded-lg transition-colors text-left cursor-pointer ${
-                mode === 'grocery' 
-                  ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-200' 
-                  : 'bg-blue-50 hover:bg-blue-100 text-blue-800 border-blue-200'
+                mode === 'grocery' ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-200' : 'bg-blue-50 hover:bg-blue-100 text-blue-800 border-blue-200'
               }`}
             >
               "{preset}"
@@ -302,19 +248,14 @@ const handleProceedToCheckout = () => {
         <textarea
           rows="4"
           value={inputText}
-          onChange={(e) => {
-            setInputText(e.target.value);
-            if (error) setError(null);
-          }}
+          onChange={(e) => { setInputText(e.target.value); if (error) setError(null); }}
           placeholder={
             mode === 'grocery'
-              ? "Type or paste your market list here (e.g., '2 paint garri ijebu and 5 tubers of yam')..."
+              ? "Type or paste your market list here (e.g., '500 naira tomatoes, 300 naira ewedu, and 1kg chicken')..."
               : "Describe your custom errand (e.g., 'Buy 2 bags of specialized fish feed from Challenge and deliver to Tanke')..."
           }
           className={`w-full p-3.5 border rounded-xl focus:ring-2 outline-none text-slate-800 text-sm transition-all shadow-xs ${
-            mode === 'grocery'
-              ? 'border-slate-300 focus:ring-emerald-500 focus:border-emerald-500'
-              : 'border-blue-200 focus:ring-blue-500 focus:border-blue-500 bg-blue-50/20'
+            mode === 'grocery' ? 'border-slate-300 focus:ring-emerald-500 focus:border-emerald-500' : 'border-blue-200 focus:ring-blue-500 focus:border-blue-500 bg-blue-50/20'
           }`}
         />
       </div>
@@ -323,10 +264,7 @@ const handleProceedToCheckout = () => {
       {error && (
         <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl flex items-center justify-between">
           <span>⚠️ {error}</span>
-          <button 
-            onClick={handleParse} 
-            className="underline font-bold text-red-800 hover:text-red-900 ml-2 cursor-pointer"
-          >
+          <button onClick={handleParse} className="underline font-bold text-red-800 hover:text-red-900 ml-2 cursor-pointer">
             Retry
           </button>
         </div>
@@ -337,19 +275,13 @@ const handleProceedToCheckout = () => {
         onClick={handleParse}
         disabled={loading || !inputText.trim()}
         className={`w-full disabled:opacity-50 text-white font-bold py-3 px-4 rounded-xl transition-all shadow-xs flex items-center justify-center gap-2 text-sm cursor-pointer ${
-          mode === 'grocery' 
-            ? 'bg-emerald-600 hover:bg-emerald-700' 
-            : 'bg-blue-600 hover:bg-blue-700'
+          mode === 'grocery' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-blue-600 hover:bg-blue-700'
         }`}
       >
         {loading ? (
-          <>
-            <span className="animate-spin">⏳</span> Processing with Gemini AI...
-          </>
+          <><span className="animate-spin">⏳</span> Processing with Gemini AI...</>
         ) : (
-          <>
-            <span>✨</span> {mode === 'grocery' ? 'Parse Grocery List' : 'Process Custom Request'}
-          </>
+          <><span>✨</span> {mode === 'grocery' ? 'Parse Grocery List' : 'Process Custom Request'}</>
         )}
       </button>
 
@@ -362,14 +294,11 @@ const handleProceedToCheckout = () => {
             </h4>
             <div className="flex items-center gap-2">
               {parsedResult.is_service_request && (
-                <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full font-bold">
+                <span className="text-[10px] bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full font-bold">
                   🚀 Special Errand Detected
                 </span>
               )}
-              <button 
-                onClick={() => setParsedResult(null)}
-                className="text-xs text-red-600 hover:underline font-medium cursor-pointer"
-              >
+              <button onClick={() => setParsedResult(null)} className="text-xs text-red-600 hover:underline font-medium cursor-pointer">
                 Clear All
               </button>
             </div>
@@ -418,14 +347,11 @@ const handleProceedToCheckout = () => {
             </div>
           )}
 
-          {/* Parsed Items List with Brand Selector */}
           <div className="space-y-2">
             {parsedResult.items?.map((item, index) => (
-              <div
-                key={index}
-                className="bg-white p-3 rounded-lg border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between text-sm shadow-2xs gap-3"
-              >
-                {/* Item Name & Brand Input */}
+              <div key={index} className="bg-white p-3 rounded-lg border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between text-sm shadow-2xs gap-3">
+                
+                {/* Item Name, Brand, & Custom Price */}
                 <div className="flex-1 space-y-1">
                   <input
                     type="text"
@@ -435,17 +361,13 @@ const handleProceedToCheckout = () => {
                       updated[index].item_name = e.target.value;
                       setParsedResult({ ...parsedResult, items: updated });
                     }}
-                    placeholder="Item Name (e.g. Spaghetti)"
+                    placeholder="Item Name (e.g. Tomatoes)"
                     className="font-bold text-slate-800 capitalize border-b border-transparent hover:border-slate-300 focus:border-emerald-500 outline-none w-full text-xs sm:text-sm"
                   />
                   
-                  {/* Brand / Variant Selector Input or Budget Display */}
-                  {item.unit === 'naira_value' ? (
-                    <span className="text-[11px] font-extrabold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md inline-block">
-                      Custom Budget: ₦{Number(item.quantity || 0).toLocaleString()}
-                    </span>
-                  ) : (
-                    <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full">
+                    {/* Brand Input */}
+                    <div className="flex items-center gap-1.5 text-xs text-slate-500 flex-1">
                       <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-wide">Brand:</span>
                       <input
                         type="text"
@@ -455,24 +377,38 @@ const handleProceedToCheckout = () => {
                           updated[index].brand_or_variant = e.target.value;
                           setParsedResult({ ...parsedResult, items: updated });
                         }}
-                        placeholder="e.g. Dangote, Golden Penny, Power Oil, Peak"
+                        placeholder="e.g. Dangote"
                         className="text-xs bg-slate-50 border border-slate-200 rounded px-2 py-0.5 w-full focus:bg-white focus:border-emerald-500 outline-none font-medium"
                       />
                     </div>
-                  )}
+
+                    {/* 💰 OVERRIDE PRICE INPUT (Visible right in the AI row!) */}
+                    <div className="flex items-center gap-1.5 text-xs text-slate-500 w-full sm:w-28 shrink-0">
+                      <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-wide">Price(₦):</span>
+                      <input
+                        type="number"
+                        value={item.custom_price || ''}
+                        onChange={(e) => {
+                          const updated = [...parsedResult.items];
+                          updated[index].custom_price = e.target.value;
+                          setParsedResult({ ...parsedResult, items: updated });
+                        }}
+                        placeholder="Auto"
+                        className="text-xs bg-slate-50 border border-slate-200 rounded px-2 py-0.5 w-full focus:bg-white focus:border-emerald-500 outline-none font-medium text-slate-900"
+                      />
+                    </div>
+                  </div>
                 </div>
 
                 {/* Quantity & Unit Controls */}
-                <div className="flex items-center gap-2 justify-between sm:justify-end">
-                  {/* Quantity Counter */}
+                <div className="flex items-center gap-2 justify-between sm:justify-end shrink-0 pt-2 sm:pt-0 border-t sm:border-0 border-slate-100">
                   <div className="flex items-center border border-slate-200 rounded-md overflow-hidden bg-slate-50">
                     <button
                       type="button"
                       onClick={() => {
                         const updated = [...parsedResult.items];
-                        const step = updated[index].unit === 'naira_value' ? 100 : 1;
-                        if (updated[index].quantity > step) {
-                          updated[index].quantity = Number(updated[index].quantity) - step;
+                        if (updated[index].quantity > 1) {
+                          updated[index].quantity = Number(updated[index].quantity) - 1;
                           setParsedResult({ ...parsedResult, items: updated });
                         }
                       }}
@@ -490,15 +426,14 @@ const handleProceedToCheckout = () => {
                         updated[index].quantity = val === '' ? '' : Math.max(1, parseInt(val, 10));
                         setParsedResult({ ...parsedResult, items: updated });
                       }}
-                      className="w-14 text-center text-xs font-bold text-slate-800 bg-transparent outline-none focus:bg-white focus:ring-1 focus:ring-emerald-500 py-1"
+                      className="w-12 text-center text-xs font-bold text-slate-800 bg-transparent outline-none py-1"
                     />
 
                     <button
                       type="button"
                       onClick={() => {
                         const updated = [...parsedResult.items];
-                        const step = updated[index].unit === 'naira_value' ? 100 : 1;
-                        updated[index].quantity = Number(updated[index].quantity || 0) + step;
+                        updated[index].quantity = Number(updated[index].quantity || 0) + 1;
                         setParsedResult({ ...parsedResult, items: updated });
                       }}
                       className="px-2 py-1 text-slate-600 hover:bg-slate-200 font-bold cursor-pointer"
@@ -507,7 +442,6 @@ const handleProceedToCheckout = () => {
                     </button>
                   </div>
 
-                  {/* Kwara Unit Selector Dropdown */}
                   <select
                     value={item.unit || 'unit'}
                     onChange={(e) => {
@@ -517,22 +451,8 @@ const handleProceedToCheckout = () => {
                     }}
                     className="bg-slate-50 border border-slate-300 text-slate-700 text-xs rounded-md p-1 font-semibold focus:ring-1 focus:ring-emerald-500 outline-none cursor-pointer"
                   >
-                    <optgroup label="Grains, Beans & Garri">
-                      <option value="cup">Cup / Tin</option>
-                      <option value="module">Module / Mudu / Congo</option>
-                      <option value="paint_rubber">Paint Rubber</option>
-                      <option value="1/8_bag">1/8 Bag (6.25kg)</option>
-                      <option value="1/4_bag">1/4 Bag (12.5kg)</option>
-                      <option value="half_bag">1/2 Bag (25kg)</option>
-                      <option value="full_bag">1 Bag (50kg)</option>
-                    </optgroup>
-
-                    <optgroup label="Oils & Liquids">
-                      <option value="75cl">75cl Bottle</option>
-                      <option value="5_litres">5 Litres</option>
-                      <option value="12.5_litres">12.5 Litres</option>
-                      <option value="25_litres">25 Litres (Keg)</option>
-                      <option value="refill">Refill (Water / Gas)</option>
+                    <optgroup label="Value Based Pricing">
+                      <option value="naira_value">Custom ₦ Amount</option>
                     </optgroup>
 
                     <optgroup label="Produce & Proteins">
@@ -543,24 +463,38 @@ const handleProceedToCheckout = () => {
                       <option value="10kg">10kg</option>
                       <option value="tuber">Tuber (Yam / Potato)</option>
                       <option value="bunch">Bunch (Plantain / Veggies)</option>
-                      <option value="pieces">Pieces (Wara / Ponmo / Meat)</option>
+                      <option value="pieces">Pieces (Wara / Meat)</option>
                       <option value="crate">Crate (Eggs)</option>
                       <option value="basket">Full Basket</option>
                       <option value="half_basket">Half Basket</option>
                     </optgroup>
 
-                    <optgroup label="Packaged, Meals & Others">
-                      <option value="carton">Carton</option>
-                      <option value="pack">Pack</option>
-                      <option value="roll">Roll (Beverages)</option>
-                      <option value="dozen">One Dozen (12 pcs)</option>
-                      <option value="plate">Plate (Restaurants / Meals)</option>
-                      <option value="sachet">Sachet</option>
-                      <option value="unit">Unit</option>
+                    <optgroup label="Grains & Staples">
+                      <option value="paint_rubber">Paint Rubber</option>
+                      <option value="module">Module / Mudu / Congo</option>
+                      <option value="cup">Cup / Tin</option>
+                      <option value="full_bag">1 Bag (50kg)</option>
+                      <option value="half_bag">1/2 Bag (25kg)</option>
+                      <option value="1/4_bag">1/4 Bag (12.5kg)</option>
+                      <option value="1/8_bag">1/8 Bag (6.25kg)</option>
                     </optgroup>
 
-                    <optgroup label="Value Based Pricing">
-                      <option value="naira_value">Custom ₦ Amount</option>
+                    <optgroup label="Oils & Liquids">
+                      <option value="75cl">75cl Bottle</option>
+                      <option value="5_litres">5 Litres</option>
+                      <option value="12.5_litres">12.5 Litres</option>
+                      <option value="25_litres">25 Litres (Keg)</option>
+                      <option value="refill">Refill (Water / Gas)</option>
+                    </optgroup>
+
+                    <optgroup label="Packaged & Others">
+                      <option value="unit">Unit</option>
+                      <option value="pack">Pack</option>
+                      <option value="carton">Carton</option>
+                      <option value="roll">Roll</option>
+                      <option value="sachet">Sachet</option>
+                      <option value="dozen">One Dozen (12 pcs)</option>
+                      <option value="plate">Plate (Meals)</option>
                     </optgroup>
                   </select>
 

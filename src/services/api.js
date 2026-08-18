@@ -56,7 +56,7 @@ export const updateOrderStatus = (orderId, statusData, adminPin) => {
     ? { order_status: statusData } 
     : statusData;
 
-  const pin = adminPin || localStorage.getItem('SHOPIN_ADMIN_PIN') || '1234';
+  const pin = adminPin || localStorage.getItem('SHOPIN_ADMIN_PIN');
 
   return api.put(`/admin/orders/${orderId}/status`, payload, {
     headers: { 'x-admin-pin': pin }
@@ -95,7 +95,7 @@ export const verifyAdminPin = async (pin) => {
     const response = await api.post('/admin/verify-pin', { pin });
     return response.data;
   } catch (error) {
-    const savedPin = localStorage.getItem('SHOPIN_ADMIN_PIN') || '1234';
+    const savedPin = localStorage.getItem('SHOPIN_ADMIN_PIN');
     if (pin.trim() === savedPin) {
       return { success: true };
     }
@@ -154,7 +154,7 @@ export const getUserStats = getAdminUsers;
 export const updateVendorProduct = (id, data) => api.put(`/admin/vendor-products/${id}`, data);
 export const deleteVendorProduct = (id) => api.delete(`/admin/vendor-products/${id}`);
 export const overrideOrderQuote = (orderId, quoteData, adminPin) => {
-  const pin = adminPin || localStorage.getItem('SHOPIN_ADMIN_PIN') || '1234';
+  const pin = adminPin || localStorage.getItem('SHOPIN_ADMIN_PIN');
   return api.put(`/admin/orders/${orderId}/override-quote`, quoteData, {
     headers: { 'x-admin-pin': pin }
   });

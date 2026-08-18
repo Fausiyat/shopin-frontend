@@ -531,9 +531,11 @@ export default function AdminDashboard() {
   const [activeAdminTab, setActiveAdminTab] = useState('locations'); 
   const [feedback, setFeedback] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [loginPinInput, setLoginPinInput] = useState('');
 
   const API_URL = import.meta.env.VITE_API_URL || 'https://shopin-kwara-backend.onrender.com';
-  const adminPin = localStorage.getItem('SHOPIN_ADMIN_PIN') || '1234';
+  const adminPin = localStorage.getItem('SHOPIN_ADMIN_PIN') || import.meta.env.VITE_ADMIN_PIN;
 
   const [creditShopinId, setCreditShopinId] = useState('');
   const [creditAmount, setCreditAmount] = useState('');
@@ -897,7 +899,7 @@ export default function AdminDashboard() {
   const handleChangePin = (e) => {
     e.preventDefault();
     setPinFeedback(null);
-    const savedPin = localStorage.getItem('SHOPIN_ADMIN_PIN') || '1234';
+    const savedPin = localStorage.getItem('SHOPIN_ADMIN_PIN') || 'import.meta.env.VITE_ADMIN_PIN';
     if (currentPin.trim() !== savedPin) return setPinFeedback({ type: 'error', text: 'Incorrect current PIN.' });
     if (!newPin || newPin.length < 4) return setPinFeedback({ type: 'error', text: 'New PIN must be at least 4 digits!' });
     if (newPin !== confirmPin) return setPinFeedback({ type: 'error', text: 'PINs do not match.' });
@@ -928,6 +930,44 @@ export default function AdminDashboard() {
   const activePendingOrders = pendingOrders.filter(
     ord => ord.order_status !== 'COMPLETED' && ord.order_status !== 'DELIVERED'
   );
+
+  // 🔐 NEW: The Login Gate!
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex flex-col justify-center items-center p-4">
+        <div className="bg-white p-8 rounded-2xl shadow-xl max-w-sm w-full border border-slate-200 text-center">
+          <div className="text-4xl mb-4">🔐</div>
+          <h2 className="text-xl font-extrabold text-slate-900 mb-1">Admin Access</h2>
+          <p className="text-xs text-slate-500 mb-6">Enter your secret PIN to access the console.</p>
+          
+          <form onSubmit={(e) => {
+            e.preventDefault();
+            if (loginPinInput === adminPin) {
+              setIsAuthenticated(true);
+            } else {
+              alert("❌ Incorrect PIN!");
+              setLoginPinInput('');
+            }
+          }}>
+            <input 
+              type="password" 
+              value={loginPinInput} 
+              onChange={(e) => setLoginPinInput(e.target.value)}
+              placeholder="Enter PIN"
+              className="w-full p-3 border border-slate-300 rounded-xl text-center tracking-widest font-black text-lg focus:ring-2 focus:ring-emerald-500 outline-none mb-4"
+              required
+            />
+            <button 
+              type="submit" 
+              className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-3 rounded-xl transition shadow-md cursor-pointer"
+            >
+              Unlock Console
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

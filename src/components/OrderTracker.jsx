@@ -75,7 +75,8 @@ export default function OrderTracker({ orderStatus = 'PENDING_CONFIRMATION', act
         // 🌟 Bulletproof Fix: Check database fields FIRST, then fallback to LocalStorage session data!
         const localCheckoutTotal = Number(localStorage.getItem('SHOPIN_LAST_PAID_AMOUNT'));
 
-        const alreadyPaid = Number(
+       // 🌟 1. Check database fields and localStorage first
+        let alreadyPaid = Number(
           activeOrder?.deposit_paid ??
           activeOrder?.amount_paid ??
           activeOrder?.parsed_json?.deposit_paid ??
@@ -83,13 +84,14 @@ export default function OrderTracker({ orderStatus = 'PENDING_CONFIRMATION', act
           0
         );
 
+        // 🌟 2. FAIL-SAFE: If no deposit was explicitly recorded, use the order's original estimated item cost!
         if (alreadyPaid === 0) {
-          alreadyPaid = Number(activeOrder?.estimated_item_cost || activeOrder?.parsed_json?.estimated_total);
+          alreadyPaid = Number(activeOrder?.estimated_item_cost || activeOrder?.parsed_json?.estimated_total || 0);
         }
 
-        
-        // 🌟 Ensure we subtract correctly so only the remaining balance is shown
+        // 🌟 3. Ensure we subtract correctly so only the remaining balance is shown
         const balanceRemaining = Math.max(0, revisedTotal - alreadyPaid);
+
 
         return (
           <div className="mt-6 bg-amber-50 border-2 border-amber-300 rounded-2xl p-5 shadow-sm">

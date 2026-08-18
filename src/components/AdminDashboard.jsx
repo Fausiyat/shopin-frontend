@@ -1153,10 +1153,45 @@ export default function AdminDashboard() {
             <div className="space-y-3">
               {activePendingOrders.map((ord) => (
                 <div key={ord.id} className="p-4 bg-slate-50 border border-slate-200 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between text-xs gap-3">
-                  <div className="space-y-1">
+                  <div className="space-y-1 w-full sm:w-1/2">
                     <p className="font-bold text-slate-900 text-sm">{ord.order_code}</p>
                     <p className="text-slate-600 italic">"{ord.raw_input_text}"</p>
-                    <p className="font-semibold text-slate-800">
+                    
+                    {/* 📍 CUSTOMER DELIVERY INFO BLOCK */}
+                    <div className="bg-emerald-50/70 border border-emerald-100 rounded-lg p-2.5 my-2">
+                      <p className="text-[9px] font-bold text-emerald-800 uppercase tracking-wider mb-1">Delivery Details</p>
+                      
+                      {/* 🆔 SHOPPER / USER ID */}
+                      <p className="text-[11px] text-slate-700 mb-0.5">
+                        🆔 <span className="font-bold text-slate-900 font-mono">
+                             {ord.shopin_id || ord.user_id || ord.shopper_id || 'ID not provided'}
+                           </span>
+                      </p>
+
+                      {/* 👤 BUYER NAME */}
+                      <p className="text-[11px] text-slate-700 mb-0.5">
+                        👤 <span className="font-bold text-slate-900">
+                             {ord.user_name || ord.customer_name || ord.full_name || ord.parsed_json?.name || 'Guest Buyer'}
+                           </span>
+                      </p>
+
+                      {/* 📞 PHONE */}
+                      <p className="text-[11px] text-slate-700 mb-0.5">
+                        📞 <a href={`tel:${ord.user_phone || ord.customer_phone}`} className="font-bold hover:underline text-emerald-700">
+                             {ord.user_phone || ord.customer_phone || 'N/A'}
+                           </a>
+                      </p>
+
+                      {/* 📍 ADDRESS */}
+                      <p className="text-[11px] text-slate-700 leading-tight">
+                        📍 <span className="font-bold text-slate-900">
+                             {ord.delivery_address || ord.address || ord.parsed_json?.delivery_address || 'Address not provided'}
+                           </span>
+                      </p>
+                    </div>
+                    {/* END DELIVERY INFO */}
+
+                    <p className="font-semibold text-slate-800 mt-1">
                       Est. Total: <span className="font-bold text-emerald-700">₦{Number(ord.total_estimated_cost || 0).toLocaleString()}</span>
                       {ord.deposit_paid !== undefined && (
                         <span className="text-slate-500 text-[11px] font-normal ml-2">
